@@ -13,7 +13,7 @@
 
 ## app実行
 1.　サーバー起動
-> uvicorn main --reload
+> uvicorn main:app --reload
 
 ## todo
 * method名,変数名の修正
