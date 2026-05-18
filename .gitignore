@@ -1,0 +1,4 @@
+.env
+sample-receipt/
+app/__pycache__/main.cpython-39.pyc
+input_img/
