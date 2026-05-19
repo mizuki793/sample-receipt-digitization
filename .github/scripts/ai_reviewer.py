@@ -21,7 +21,7 @@ def main():
 
   # 2. 安全にgit diffを取得
   try:
-      diff_cmd = f"git diff origin/{base_sha}...origin/{head_sha}"
+      diff_cmd = f"git diff {base_sha}...{head_sha}"
       diff_output = subprocess.check_output(diff_cmd, shell=True, text=True)
   except subprocess.CalledProcessError as e:
       print(f"Failed to get git diff: {e}")
