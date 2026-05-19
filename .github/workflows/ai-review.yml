@@ -32,23 +32,3 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: python .github/scripts/ai_reviewer.py
-        # run: |
-        #   # 1. FastAPI専門家のプロンプト（システム指示）を定義
-        #   cat << 'EOF' > system_prompt.txt
-        #   あなたは優秀なシニアバックエンドエンジニア（FastAPIの専門家）です。
-        #   Pull Requestのコード差分をレビューし、以下の観点でフィードバックをしてください。
-        #   1. FastAPIのベストプラクティス（async/awaitの適切な使用、Pydanticの型定義など）に沿っている
-        #   2. メソッド名や変数名が直感的で、命名規則（Pythonの型、snake_caseなど）に則っているか
-        #   3. バグやセキュリティ上の脆弱性、不要なコードが含まれていないか
-        #   4. 指摘する際は、1つのIssue/PRとして独立して扱える「小さな範囲」に留めてください。
-        #   返答は必ず「日本語」で行い、具体的かつ建設的なアドバイスを心がけてください。
-        #   EOF
-        #   # 2. 差分を取得し、プロンプトに結合
-        #   git diff origin/${{ github.event.pull_request.base.ref }}...${{ github.event.pull_request.head.ref }} > diff.patch
-        #   cat system_prompt.txt diff.patch > full_prompt.txt
-      - name: Run Gemini CLI
-        uses: google-github-actions/run-gemini-cli@v0
-        with:
-          prompt: full_prompt.txt
-        env:
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
