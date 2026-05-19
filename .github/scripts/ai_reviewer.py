@@ -50,7 +50,7 @@ def main():
     }
 
     print("Geminiにコードレビューをリクエスト中...")
-    response = requests.post(url, headers=headers, json=payload)
+    response = requests.post(url, headers=headers, json=payload, timeout=90)
     response.raise_for_status()
   
     # レビュー結果の抽出
