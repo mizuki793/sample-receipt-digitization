@@ -1,15 +1,15 @@
 ---
-name: ✨ Feature / Task
+name: Feature / Task
 about: 新機能の追加や、実装タスクを管理するためのテンプレート
-title: '【Task】'
-labels: 'enhancement'
+title: 'Task'
+labels: 'prio: medium'
 assignees: ''
 ---
 
 ### 目的 / 背景
 <!-- なぜこの機能が必要なのか、何を解決したいのかを記述してください -->
 
-### 妥協条件（Doneの定義）
+### Doneの定義
 <!-- 何ができていたらこのIssueをクローズ（完了）とするかをチェックリスト形式で記述してください -->
 - [ ] 
 - [ ] 

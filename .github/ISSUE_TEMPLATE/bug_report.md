@@ -1,7 +1,7 @@
 ---
-name: 🐛 Bug Report
+name: Bug Report
 about: バグや不具合を修正するためのテンプレート
-title: '【Bug】'
+title: 'Bug'
 labels: 'bug'
 assignees: ''
 ---
