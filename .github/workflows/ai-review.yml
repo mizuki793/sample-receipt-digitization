@@ -1,8 +1,8 @@
-name: AI Code Reviewer
+name: AI Code Reviewer(use Google Official)
 
 on:
   pull_request:
-    types: [opened, synchronize] # PRが作成された時と、コードが追加プッシュされた時に実行
+    types: [opened, synchronize]
 
 jobs:
   review:
@@ -10,27 +10,31 @@ jobs:
     permissions:
       contents: read
       pull-requests: write # PRにコメントを書き込む権限
+
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
-
-      - name: AI PR Reviewer
-        uses: fuxingloh/multi-ai-code-reviewer@main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # GitHubが自動発行するトークン
-          GEMINI_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
         with:
-          # xxxx_API_KEYの変更、provider,modelの変更で他のreviewも利用可能(ex:provider: anthropic,model: "claude-3-5-sonnet")
-          provider: gemini
-          model: "gemini-2.5-flash"
-          debug: false
-          review_simple_changes: false
-          # レビューの振る舞いをカスタマイズ
-          system_message: |
-            あなたは優秀なシニアバックエンドエンジニア（FastAPIの専門家）です。
-            Pull Requestのコード差分をレビューし、以下の観点でフィードバックをしてください。
-            1. FastAPIのベストプラクティス（async/awaitの適切な使用、Pydanticの型定義など）に沿っているか
-            2. メソッド名や変数名が直感的で、命名規則（Pythonの型、snake_caseなど）に則っているか
-            3. バグやセキュリティ上の脆弱性、不要なコードが含まれていないか
-            4. 指摘する際は、1つのIssue/PRとして独立して扱える「小さな範囲」に留めてください。
-            返答は必ず「日本語」で行い、具体的かつ建設的なアドバイスを心がけてください。
+          fetch-depth: 0 # 差分（diff）を正しく計算するために履歴をすべて取得
+
+      - name: Generate Review Prompt
+        run: |
+          # 1. FastAPI専門家のプロンプト（システム指示）を定義
+          cat << 'EOF' > system_prompt.txt
+          あなたは優秀なシニアバックエンドエンジニア（FastAPIの専門家）です。
+          Pull Requestのコード差分をレビューし、以下の観点でフィードバックをしてください。
+          1. FastAPIのベストプラクティス（async/awaitの適切な使用、Pydanticの型定義など）に沿っている
+          2. メソッド名や変数名が直感的で、命名規則（Pythonの型、snake_caseなど）に則っているか
+          3. バグやセキュリティ上の脆弱性、不要なコードが含まれていないか
+          4. 指摘する際は、1つのIssue/PRとして独立して扱える「小さな範囲」に留めてください。
+          返答は必ず「日本語」で行い、具体的かつ建設的なアドバイスを心がけてください。
+          EOF
+          # 2. 差分を取得し、プロンプトに結合
+          git diff origin/${{ github.event.pull_request.base.ref }}...${{ github.event.pull_request.head.ref }} > diff.patch
+          cat system_prompt.txt diff.patch > full_prompt.txt
+      - name: Run Gemini CLI
+        uses: google-github-actions/run-gemini-cli@v0
+        with:
+          prompt: full_prompt.txt
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
