@@ -1,8 +1,8 @@
 ---
-name: ✨ Feature / Task
+name: Feature / Task
 about: 新機能の追加や、実装タスクを管理するためのテンプレート
-title: '【Task】'
-labels: 'enhancement'
+title: 'Task'
+labels: 'prio: medium'
 assignees: ''
 ---
 
