@@ -101,7 +101,7 @@ def call_api_with_retry(url, payload, headers, max_retries=3, backoff_factor=60)
                 print(f"Gemini API 503検知。 {sleep_time}秒後にリトライします... (試行 {attempt + 1}/{max_retries})")
                 time.sleep(sleep_time)
                 continue
-            return e
+            raise e
 
 if __name__ == "__main__":
     main()
