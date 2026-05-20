@@ -62,3 +62,4 @@ async def view_receipt_status(job_id):
 #     res_text = res.text
 #   except Exception as e:
 #     return {"error": str(e)}
+

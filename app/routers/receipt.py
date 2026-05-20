@@ -20,10 +20,10 @@ async def analyses_receipts(
     job_id = str(uuid.uuid4())
     saved_file_path = await init_receipt_pipeline(validated_data.file, job_id)
     background_tasks.add_task(analysis_task, job_id, saved_file_path)
-    return {"job_id": job_id, "status": "PENDING"}
+    return { "job_id": job_id }
 
-@router.get("/v1/jobs/status/{job_id}")
-async def view_status_recipt(job_id: str):
+@router.get("/jobs/status/{job_id}")
+async def view_status_receipt(job_id: str):
   res = await view_receipt_status(job_id)
   return res
 

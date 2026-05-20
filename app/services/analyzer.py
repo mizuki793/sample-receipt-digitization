@@ -5,9 +5,8 @@ from app.repositories.job import JobRepository
 
 # todo:バックグラウンドで実行される非同期関数
 async def analysis_task(job_id: str, file_path: Path):
-    # ① 処理開始ステータスに更新しても良い（お好みで）
-    await JobRepository.create_job(job_id, status="PENDING")
-    # ② ここで5秒待つ（重い解析処理のモック）
+    await JobRepository.update_job_data(job_id, {"status": "PENDING"})
+    # ここで30秒待つ（重い解析処理のモック）
     await asyncio.sleep(30)
 
     # ③ 本来はここで「file_path」の画像を読み込んでOpenAIに投げる
@@ -21,6 +20,6 @@ async def analysis_task(job_id: str, file_path: Path):
     }
     await JobRepository.create_job(job_id, dummy_result)
 
-async def featch_jobid_status(job_id:str):
+async def fetch_job_status(job_id:str):
     status = await JobRepository.get_job(job_id)
     return status
