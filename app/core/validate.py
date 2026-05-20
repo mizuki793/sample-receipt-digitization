@@ -1,4 +1,5 @@
 from fastapi import UploadFile, File, HTTPException, status
+from app.schemas.receipt import ReceiptItem, ReceiptAnalysisResponse
 
 class JPEGValidator:
     def __init__(self, file: UploadFile = File(...)):
@@ -21,7 +22,8 @@ class JPEGValidator:
         self.file = file
 
 class costValidator:
-    def verify_receipt_total(items: list[dict], total_amount: int) -> tuple[bool, str | None]:
+    @staticmethod
+    def verify_receipt_total(items: list[ReceiptItem], total_amount: int) -> tuple[bool, str | None]:
         """
         レシートの各品目の合計金額が、請求総額と一致するか検証する純粋関数。
         
@@ -29,7 +31,7 @@ class costValidator:
             (True, None) -> 一致している場合
             (False, エラー理由) -> 不一致の場合
         """
-        calced_total = sum(item.get("unit_price",0) for item in items) 
+        calced_total = sum(item.unit_price for item in items) 
 
         if calced_total != total_amount:
             error_msg = f"金額の不一致を検知しました。各品目の合計: {calced_total}円, 請求総額: {total_amount}円"
