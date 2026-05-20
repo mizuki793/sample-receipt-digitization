@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.infrastructure.redis import init_redis_pool, close_redis_pool
-from app.routers.receipt import router as receipt_router
+from app.routers.receipt_router import router as receipt_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
