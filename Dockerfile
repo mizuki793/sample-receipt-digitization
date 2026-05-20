@@ -7,13 +7,25 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+# OpenCVや画像処理に必要なLinuxライブラリをインストール
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libglib2.0-0 \
+    libxcb1 \
+    libx11-xcb1 \
+    libxcb-render0 \
+    libxcb-shape0 \
+    libxcb-xfixes0 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 # 依存ライブラリのインストール
 # ※ requirements.txt が空でもエラーにならないように記述
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # アプリケーションのソースコードをコピー
-COPY . .
+COPY ./app/ .
 
 # ポート8000を開放
 EXPOSE 8000

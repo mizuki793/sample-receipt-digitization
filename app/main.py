@@ -1,18 +1,14 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
-app = FastAPI()
+from app.infrastructure.redis import init_redis_pool, close_redis_pool
+from app.routers.receipt import router as receipt_router
 
-@app.get("/health")
-def read_root():
-  return{"status": "ok"}
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_redis_pool()
+    #遅延させて返す
+    yield
+    await close_redis_pool()
 
-# # バッチ処理開始
-# @app.post("/v1/receipt/execute")
-# def execute_recipt():
-#   job_id = "set uniqkey"
-#   return {"jon-id": job_id}
-
-# # ジョブ進捗返却(job-idを受け取る)
-# @app.get("/v1/jobs/status/{job_id}")
-# def view_status_recipt(job_id: int):
-#   res_json = {"res-json": "res-json"}
-#   return {res_json}
+app = FastAPI(lifespan=lifespan)
+app.include_router(receipt_router)

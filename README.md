@@ -11,55 +11,81 @@
         participant API as FastAPIコンテナ (Web)
         participant Redis as Redisコンテナ (KVS)
         participant Task as Background Task (非同期)
+        participant Storage as ローカルストレージ (Hive JSON)
+        participant VectorDB as Chromaコンテナ (Vector)
     end
     participant LLM as OpenAI API
 
-    %% ーーー 1. ジョブの受付フェーズ ーーー
-    Note over Client, API: 【1. ジョブの受付フェーズ (Issue #1, #2)】
+    %% 1. レシート処理：ジョブの受付
+    Note over Client, API: 【1. レシート処理：ジョブの受付】
     Client->>API: POST /v1/receipt/execute (画像ファイル)
     activate API
-    Note over API: 画像をコンテナ内の一時フォルダに保存<br/>UUIDから job_id を生成
-    API->>Redis: ジョブ初期化保存 (status="PENDING", TTL=1時間)
+    Note over API: 画像を一時フォルダに保存<br/>UUIDから job_id を生成
+    API->>Redis: ジョブ初期化保存 (status="PENDING")
     API->>Task: タスクを登録 (job_id, 画像パス)
     API-->>Client: 202 Accepted (job_id, status="PENDING")
     deactivate API
-    Note over Client, API: ※ クライアント側は待たされずに即解放
 
-    %% ーーー 2. バックグラウンド処理フェーズ ーーー
-    Note over Task, LLM: 【2. バックグラウンド処理フェーズ (Issue #3 ~ #5)】
+    %% 2. レシート処理：非同期バックグラウンド解析＆永続化
+    Note over Task, VectorDB: 【2. レシート処理：バックグラウンド解析＆データ蓄積】
     activate Task
     Task->>Redis: ステータス更新 (status="PROCESSING")
     
-    Note over Task: [Issue #4] コード内の擬似テキストで検証<br/>[Issue #5] 保存された本物画像を読み込み
-    
-    loop 整合性チェック不合格時の自動リトライ (最大3回) [Issue #5]
+    loop 整合性チェック不合格時の自動リトライ (最大3回)
         Task->>LLM: 解析リクエスト (Structured Outputs)
-        LLM-->>Task: レシートデータ (JSON)
-        Note over Task: [Issue #3] 総額整合性チェック<br/>𝝨(各品目) == 請求総額
-        alt 整合性OK
-            Note over Task: ループを抜ける
-        else 整合性NG (かつリトライ上限未満)
-            Note over Task: プロンプトにエラー内容をフィードバックして再挑戦
-        end
+        LLM-->>Task: レシートデータ (JSON: 店舗名、日時、品目、価格)
+        Note over Task: 総額整合性チェック<br/>𝝨(各品目価格) == 請求総額
     end
 
     alt 解析・検証 成功
-        Task->>Redis: 結果を格納 (status="SUCCESS", result=データ)
+        %% Hive形式保存
+        Task->>Storage: Hive形式でJSONファイルを永続化<br/>(year=YYYY/month=MM/day=DD/job_id.json)
+        
+        %% Vector DBへの同期（表記揺れ吸収用）
+        Note over Task: 商品名をOpenAI Embeddingでベクトル化
+        Task->>VectorDB: 商品名ベクトル ＆ メタデータ(価格・店舗)を保存
+        
+        Task->>Redis: 結果を格納 (status="SUCCESS")
     else リトライ上限到達 / システムエラー
-        Task->>Redis: エラーを記録 (status="FAILED", result=エラー内容)
+        Task->>Redis: エラーを記録 (status="FAILED")
     end
     deactivate Task
 
-    %% ーーー 3. ステータス確認フェーズ ーーー
-    Note over Client, Redis: 【3. ステータス確認フェーズ (Issue #2)】
-    loop status が SUCCESS または FAILED になるまで定期実行（ポーリング）
-        Client->>API: GET /v1/jobs/status/{job_id}
-        activate API
-        API->>Redis: job_id の状態を問い合わせ
-        Redis-->>API: 現在のステータス & 結果 (なければ404)
-        API-->>Client: 200 OK (status, result)
-        deactivate API
+    %% 3. 通常の最安値検索 (POST)
+    Note over Client, Storage: 【3. 通常の最安値検索 (Pydanticガード ＋ DuckDB)】
+    Client->>API: POST /v1/receipts/search (BODY: 検索商品名)
+    activate API
+    Note over API: Pydanticによる長文・不正文字列のバリデーション
+    API->>API: DuckDBをインメモリ起動
+    API->>Storage: Hive内の全JSONに対してSQLを実行<br/>(店舗別・時間帯別の最安値を高速集計)
+    Storage-->>API: 集計結果データ
+    API-->>Client: 200 OK (店舗別最安値・統計情報)
+    deactivate API
+
+    %% 4. AIチャット対話＆最安値RAGエージェント (Streaming)
+    Note over Client, LLM: 【4. 自律型AIエージェント対話 (RAG ＋ StreamingResponse)】
+    Client->>API: POST /v1/chat/stream (BODY: ユーザーの質問)
+    activate API
+    
+    Note over API: LangGraphエージェントが思考を開始
+    
+    alt 【思考】ユーザーが「特定商品の表記揺れを含む最安値」を求めた場合
+        API->>VectorDB: 商品名ベクトルで類似検索 (表記揺れを吸収)
+        VectorDB-->>API: 該当する過去のレシートコンテキストを返却
+    else 【思考】ユーザーが「今月の合計額などの集計計算」を求めた場合
+        API->>Storage: DuckDBツールを起動してJSON群からSQL集計
+        Storage-->>API: 計算結果を返却
     end
+
+    %% Streamingの実行
+    API->>LLM: 抽出されたコンテキスト ＋ ユーザーの質問 (stream=True)
+    activate LLM
+    loop トークンが終了するまで
+        LLM-->>API: 逐次テキストトークンを返却
+        API-->>Client: StreamingResponse (Server-Sent Eventsで1文字ずつ返却)
+    end
+    deactivate LLM
+    deactivate API
   ```
   * 実行
   * dir構成
@@ -67,9 +93,15 @@
 # メモ書き
 ## 仮想環境set(dockerへ変更)
 1. 仮想環境作成
-> docker-compose up -d
-1.　サーバー起動
-> docker compose up --build
+  > docker-compose up -d  
+1. サーバー起動
+  > docker compose up --build
+1. swaggerで確認
+  > http://localhost:8000/docs へアクセス
+1. redis関連
+  > redis-cli
+  > keys *
+  > get {id}
 
 ## todo
 * method名,変数名の修正
@@ -83,21 +115,6 @@
 ## issue-memo
 * 2026/05/19
 ```
-## 🏗️ 組み立て直した新・Issueロードマップ（全5タスク）
-
-### 1️⃣ 【環境構築】Docker Composeによるマルチコンテナ環境（FastAPI + Redis）の構築
-
-まずは「すべての土台」となるコンテナインフラをワンコマンドで立ち上がる状態にします。
-
-* **目的**:
-ホストマシンの環境（venvなど）に依存せず、`docker compose up` のみで開発環境（FastAPI + Redis）が完全に同期して起動するマルチコンテナ基盤を構築する。
-* **Doneの定義**:
-* [ ] リポジトリルートに `Dockerfile` と `docker-compose.yml` が用意されていること。
-* [ ] ホスト側のソースコード変更がコンテナ内のUvicornにリアルタイム反映されるよう、`volumes`（マウント）が正しく設定されていること。
-* [ ] アプリ起動時に、FastAPIからRedisへの接続（非同期クライアント `redis.asyncio` を使用）の疎通確認ログが出力されること。
-
-
-
 ### 2️⃣ 【器づくり】Redisを用いた非同期ジョブ受付とステータス確認APIの実装
 
 外部API（OpenAI）を繋ぐ前に、Redisを使って非同期で状態（ステータス）が変わるWebAPIとしての基本サイクルを完成させます。

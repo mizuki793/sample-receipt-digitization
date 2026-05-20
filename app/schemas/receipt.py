@@ -8,6 +8,8 @@ class ReceiptItem(BaseModel):
     quantity: int = Field(description="購入個数")
 
 class ReceiptAnalysisResponse(BaseModel):
+    store_name: str | None = Field(description="店舗名")
+    store_address: str | None = Field(description="店舗住所")
     transaction_date: datetime | None = Field(description="レシート発行日(YYYY-MM-DDTHH:MM:SS)")
     items: List[ReceiptItem] = Field(description="商品型のリスト")
     total_amount: int = Field(description="合計の価格")
