@@ -7,7 +7,7 @@ from app.services.analyzer import analysis_task, fetch_job_status
 __all__ = [
     "init_receipt_pipeline",
     "analysis_task",
-    "view_receipt_status"
+    "view_receipt_status",
     "fetch_job_status"
 ]
 

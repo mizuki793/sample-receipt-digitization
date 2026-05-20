@@ -14,6 +14,7 @@ class JobRepository:
         # バックグラウンドでもルーターでも安全に動くよう、プールから接続を借りて汎用関数で保存
         async with aioredis.Redis(connection_pool=redis_infra.redis_pool) as client:
             await set_value(client, key, payload, expire_sec=3600)
+    
     @classmethod
     async def update_job_data(cls, job_id: str, data: Dict[str, Any]) -> None:
         """指定されたjob_idのジョブデータを更新（上書き）"""
