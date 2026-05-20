@@ -1,7 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, Depends
 import uuid
 from app.services import init_receipt_pipeline, analysis_task, view_receipt_status
-from app.schemas.validate import JPEGValidator
+from app.core.validate import JPEGValidator
 
 router = APIRouter(
     prefix="/api/v1",
