@@ -9,7 +9,9 @@ import cv2
 # from app.prompts import reate_receipt_prompt
 from pathlib import Path
 from typing import Any
-from app.services.analyzer import featch_jobid_status
+from fastapi import UploadFile
+from app.services.analyzer import fetch_job_status
+from app.repositories.job import JobRepository
 
 img_dir = "../input_img/"
 custom_config = '-l jpn+eng --oem 3 --psm 6'
@@ -17,20 +19,21 @@ custom_promt = "/prompt/ocr.md"
 UPLOAD_DIR = Path("/tmp/receipt_imgs")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-async def init_receipt_pipeline(file_object: Any, job_id:str) -> str:
-	img_path = await save_for_local_receipt_image(file_object, job_id)
-	return img_path
+async def init_receipt_pipeline(file_object: UploadFile, job_id:str) -> str:
+    await JobRepository.create_job(job_id, {"status": "PENDING"})
+    img_path = await save_for_local_receipt_image(file_object, job_id)
+    return img_path
 
 # ファイル保存処理、将来的にクラウドに上げることも踏まえた切り出し
-async def save_for_local_receipt_image(file_object: Any, job_id:str) -> str:
+async def save_for_local_receipt_image(file_object: UploadFile, job_id:str) -> str:
     saved_file_path = UPLOAD_DIR / f"{job_id}.jpg"
     content = await file_object.read()
     with open(saved_file_path, "wb") as buffer:
         buffer.write(content)
     return str(saved_file_path)
 
-async def view_receipt_status(job_id):
-	job_status = await featch_jobid_status(job_id)
+async def view_receipt_status(job_id: str):
+	job_status = await fetch_job_status(job_id)
 	return job_status
 
 

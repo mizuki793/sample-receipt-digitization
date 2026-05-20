@@ -1,5 +1,6 @@
 # app/repositories/job.py
 import json
+from typing import Any, Dict
 import redis.asyncio as aioredis
 from app.infrastructure import redis as redis_infra
 from app.infrastructure.redis import redis_pool, set_value, get_value
