@@ -1,4 +1,11 @@
 .env
 sample-receipt/
-app/__pycache__/main.cpython-39.pyc
 input_img/
+.vscode/
+# python実行のキャッシュ関連ファイル
+.pytest_cache/
+app/__pycache__/
+app/**/__pycache__/
+*.pyc
+.devcontainer/
+.python-version

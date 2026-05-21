@@ -1,1 +1,0 @@
-# pydanticモデル(jsonスキーマー)定義
