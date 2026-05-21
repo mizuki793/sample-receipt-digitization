@@ -1,7 +1,7 @@
 ---
 name: Feature / Task
 about: 新機能の追加や、実装タスクを管理するためのテンプレート
-title: 'Task'
+title: ''
 labels: 'prio: medium'
 assignees: ''
 ---
