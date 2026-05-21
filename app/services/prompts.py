@@ -1,9 +1,9 @@
-def create_receipt_prompt(text:str):
+def create_receipt_prompt(text:str) -> str:
   return f"""
     # 命令
       - あなたは、OCRされた日本の紙レシートを解析し指定されたJSON形式に変換する専門家です。以下のルールに従って与えられたテキストから情報を抽出してください。
     # ルール
-      - 特に購入商品の名称である"item_name"、会計の合計"total_amount"を取得したいと考えています。これらの誤字脱字を一般的な商品名に補正してください。
+      - 特に購入商品の名称である"item_name"、商品の価格"unit_price"、店名"store_name"を取得したいと考えています。これらの誤字脱字を一般的な商品名に補正してください。
       - 下記を検討し、投入してください
         - 値の適切性
         - 項目の適切性
@@ -15,10 +15,11 @@ def create_receipt_prompt(text:str):
     # 抽出例(Few-shot Example)
     ## 例1: テキスト入力
       ```text
-        ファミリーマート⚪︎⚪︎店　
+        ファミリーマート⚪︎⚪︎店
+        東京都江東区夢の島2-1-2
         領収書
-        2026年5月18日(月)　12:09
-        電話　03-1234-5678
+        2026年5月18日(月) 12:09
+        電話 03-1234-5678
         ※アサヒミツヤウルトラストロングレモン ¥96
         ※ニッコウアブラアゲ5マイ        ¥105
         合計               ¥201
@@ -30,25 +31,8 @@ def create_receipt_prompt(text:str):
         お買い上げ点数          2点
         ※印は軽減税率(8%)適用商品
       ```
-    ## 例2:JON出力
-      ```json
-      {
-        "transaction_date":"2026-05-18T12:09:00",
-        "items":[
-          {
-            "item_name":"アサヒミツヤウルトラストロングレモン",
-            "unit_price": 96,
-            "quantity": 1
-          },
-          {
-            "item_name":"ニッコウアブラアゲ5マイ",
-            "unit_price": 105,
-            "quantity": 1
-          }
-        ],
-        "total_amount": 201,
-        "tax": 14
-      }
-      ```
+    ## 例2:出力期待値
+      - LiteLLMの response_format に指定されたスキーマに従って、正確なJSONオブジェクトのみを出力してください。
     # 入力
+    {text}
   """

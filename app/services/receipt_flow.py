@@ -10,7 +10,7 @@ import cv2
 from pathlib import Path
 from typing import Any
 from fastapi import UploadFile
-from app.services.analyzer import fetch_job_status
+from app.services.receipt_service import fetch_job_status
 from app.repositories.job import JobRepository
 
 img_dir = "../input_img/"

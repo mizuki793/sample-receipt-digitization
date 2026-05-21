@@ -92,17 +92,30 @@
 ---
 # メモ書き
 ## 仮想環境set(dockerへ変更)
-1. 仮想環境作成
+- 仮想環境作成
   > docker-compose up -d  
-1. サーバー起動
+- サーバー起動
   > docker compose up --build
-1. swaggerで確認
+  - cf.仮想環境削除
+    > docker-compose down
+
+- swaggerで確認
   > http://localhost:8000/docs へアクセス
-1. redis関連
+
+- redis関連(redis格納確認)
   > redis-cli
   > keys *
   > get {id}
 
+- test関連
+  > pytest -v {test_ファイルpath or dir}  
+  - example  
+    > pytest -v app/tests/services/
+    test_receipt_service.py
+
+    > pytest -v app/tests
+    - PCの都合でこれでしか動かなかった
+      > python -m pytest -v app/tests/services/test_receipt_service.py
 ## todo
 * method名,変数名の修正
 * テストクラス作成
