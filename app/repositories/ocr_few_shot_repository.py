@@ -1,6 +1,6 @@
 import duckdb
 from fastapi.concurrency import run_in_threadpool
-from app.config import settings
+from app.core.config import settings
 
 class OcrFewShotRepository:
     # 読み込み先のパスをconfigや環境変数から取得

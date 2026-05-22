@@ -28,8 +28,8 @@ async def test_analysis_task_success(mocker):
         "total_amount": 400,
         "tax": 32,
         "items": [
-            {"item_name": "卵", "unit_price": 150, "quantity": 1},
-            {"item_name": "牛乳", "unit_price": 250, "quantity": 1}
+            {"item_name": "卵", "unit_price": 150, "quantity": 1, "category":"日配品（乳製品・豆腐・卵・パンなど）"},
+            {"item_name": "牛乳", "unit_price": 250, "quantity": 1,"category":"日配品（乳製品・豆腐・卵・パンなど）" }
         ]
     }
     expected_final_output = {
@@ -39,8 +39,8 @@ async def test_analysis_task_success(mocker):
         "total_amount": 400,
         "tax": 32,
         "items": [
-            {"item_name": "卵", "unit_price": 150, "quantity": 1},
-            {"item_name": "牛乳", "unit_price": 250, "quantity": 1}
+            {"item_name": "卵", "unit_price": 150, "quantity": 1, "category":"日配品（乳製品・豆腐・卵・パンなど）"},
+            {"item_name": "牛乳", "unit_price": 250, "quantity": 1, "category":"日配品（乳製品・豆腐・卵・パンなど）"}
         ]      
     }
     #  2. call_llm_json 関数を外側から奪い取り、偽の非同期関数(AsyncMock)に差し替える
