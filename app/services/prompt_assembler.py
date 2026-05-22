@@ -1,3 +1,5 @@
+import textwrap
+
 class ReceiptPromptAssembler:
     @classmethod
     def _get_example_section(cls, few_shots: list[dict] = None) -> str:
@@ -13,30 +15,33 @@ class ReceiptPromptAssembler:
                 example_section += f"        ```json\n{shot['corrected_json']}\n        ```\n"
         else:
         # DuckDBが空、またはヒットしなかった場合のフォールバック（既存の固定例1）
-            example_section += """  ## 例1: 固定の修正実績（基本ケース）  
-        ### 例1: テキスト入力
-          ```text
-            ファミリーマート⚪︎⚪︎店
-            東京都江東区夢の島2-1-2
-            領収書
-            2026年5月18日(月) 12:09
-            ※アサヒミツヤウルトラストロングレモン ¥96
-            ※ニッコウアブラアゲ5マイ        ¥105
-            合計               ¥201
-         ```
-        ### 出力期待値
-          ```json
-          {
-            "store_name": "ファミリーマート⚪︎⚪︎店",
-            "transaction_date": "2026-05-18T12:09:00",
-            "items": [
-                {"item_name": "アサヒミツヤウルトラストロングレモン", "quantity": 1, "unit_price": 96},
-                {"item_name": "ニッコウアブラアゲ5マイ", "quantity": 1, "unit_price": 105}
-            ],
-            "total_amount": 201
-          }
-         ```
-"""
+                        # 固定例のインデントを修正
+            fixed_example = """\
+            ## 例1: 固定の修正実績（基本ケース）
+              ### テキスト入力
+                ```text
+                ファミリーマート⚪︎⚪︎店
+                東京都江東区夢の島2-1-2
+                領収書
+                2026年5月18日(月) 12:09
+                ※アサヒミツヤウルトラストロングレモン ¥96
+                ※ニッコウアブラアゲ5マイ        ¥105
+                合計               ¥201
+                ```
+              ### 出力期待値
+                ```json
+                {
+                  "store_name": "ファミリーマート⚪︎⚪︎店",
+                  "transaction_date": "2026-05-18T12:09:00",
+                  "items": [
+                      {"item_name": "アサヒミツヤウルトラストロングレモン", "quantity": 1, "unit_price": 96},
+                      {"item_name": "ニッコウアブラアゲ5マイ", "quantity": 1, "unit_price": 105}
+                  ],
+                  "total_amount": 201
+                }
+                ```
+            """
+            example_section += textwrap.dedent(fixed_example)
         return example_section
 
     @classmethod
@@ -54,7 +59,7 @@ class ReceiptPromptAssembler:
         - "items"のリストには、購入した商品のみを含めてください。小計や税、合計金額などは含めないでください。
         - 数量が明記されていない商品の"quantity"は、1としてください。
         - テキストから抽出できない項目は、"null"としてください。
-        - 誤読補正例を確認した上で項目にあった出力してください
+        - 誤読補正例を3回以上確認した上で項目にあった出力してください
         # 誤読補正例
         - 「\」→ 「¥」
         - 「\\」→ 「¥」
