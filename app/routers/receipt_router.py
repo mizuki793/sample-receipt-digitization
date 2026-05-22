@@ -12,7 +12,7 @@ router = APIRouter(
 def read_root():
     return{"status": "ok"}
 
-@router.post("/receipt/execute", status_code=202)
+@router.post("/receipt/upload", status_code=202)
 async def analyses_receipts(
     background_tasks: BackgroundTasks,
     validated_data: JPEGValidator = Depends()
