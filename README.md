@@ -89,6 +89,18 @@
   ```
   * 実行
   * dir構成
+  * 構成(メモ書き)
+    ```
+      【receipt-service】(FastAPI)
+      ├── 役割: OCR解析、金額検証、手動補正ループ
+      └── DB: DuckDB (ローカルレイク)
+            │
+            │ (パース成功時にHTTPで通知)
+            ▼
+    【search-rag-service】(FastAPI / 新コンテナ)
+      ├── 役割: 商品名のEmbedding（ベクトル化）、曖昧チャット、レコメンド最安値検索
+      └── DB: Chroma (Vector DB)
+    ```
 ---
 # メモ書き
 ## 仮想環境set(dockerへ変更)
@@ -98,6 +110,8 @@
   > docker compose up --build
   - cf.仮想環境削除
     > docker-compose down
+  - cf.キャッシュなしbuild(web or redis)
+    > docker compose build --no-cache {service名}
 
 - swaggerで確認
   > http://localhost:8000/docs へアクセス

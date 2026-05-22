@@ -8,7 +8,9 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # OpenCVや画像処理に必要なLinuxライブラリをインストール
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr \
+    tesseract-ocr-jpn \
     libgl1 \
     libglib2.0-0 \
     libxcb1 \
