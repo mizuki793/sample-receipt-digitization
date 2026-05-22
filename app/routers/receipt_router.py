@@ -1,7 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, Depends
 import uuid
 from app.services import init_receipt_pipeline, analysis_task, view_receipt_status
-from app.core.validate import JPEGValidator
+from app.core.validate import ImageValidator
 
 router = APIRouter(
     prefix="/api/v1",
@@ -15,7 +15,7 @@ def read_root():
 @router.post("/receipt/upload", status_code=202)
 async def analyses_receipts(
     background_tasks: BackgroundTasks,
-    validated_data: JPEGValidator = Depends()
+    validated_data: ImageValidator = Depends()
 ):
     job_id = str(uuid.uuid4())
     saved_file_path = await init_receipt_pipeline(validated_data.file, job_id)

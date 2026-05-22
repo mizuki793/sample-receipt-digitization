@@ -1,7 +1,7 @@
 from fastapi import UploadFile, File, HTTPException, status
 from app.schemas.receipt import ReceiptItem, ReceiptAnalysisResponse
 
-class JPEGValidator:
+class ImageValidator:
     def __init__(self, file: UploadFile = File(...)):
         # 1. 拡張子チェック
         filename_lower = file.filename.lower()
