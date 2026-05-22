@@ -62,3 +62,4 @@ class ReceiptPromptAssembler:
         """
 
         return base_prompt + example_section + input_section
+    

@@ -3,9 +3,8 @@ import duckdb
 from pathlib import Path
 from app.config import settings
 
-DUCKDB_PATH = settings.DUCKDB_PATH
 def init_database():
-    db_path = DUCKDB_PATH
+    db_path = settings.DUCKDB_PATH
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
 
     print(f"Connecting to DuckDB at: {db_path}")
