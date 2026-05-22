@@ -1,6 +1,6 @@
 class ReceiptPromptAssembler:
-    @staticmethod
-    def _get_example_section(few_shots: list[dict] = None) -> str:
+    @classmethod
+    def _get_example_section(cls, few_shots: list[dict] = None) -> str:
         example_section = "\n    # 抽出例(Few-shot Example)\n"
         
         if few_shots:
@@ -28,8 +28,8 @@ class ReceiptPromptAssembler:
 """
         return example_section
 
-    @staticmethod
-    def build_few_shot_receipt_prompt(text: str, few_shots: list[dict] = None) -> str:
+    @classmethod
+    def build_few_shot_receipt_prompt(cls, text: str, few_shots: list[dict] = None) -> str:
         base_prompt = f"""
         # 命令
         - あなたは、OCRされた日本の紙レシートを解析し指定されたJSON形式に変換する専門家です。以下のルールに従って与えられたテキストから情報を抽出してください。
@@ -53,8 +53,7 @@ class ReceiptPromptAssembler:
         """
 
         # 2. 抽出例（Few-shot）セクションの動的組み立て
-        example_section = ReceiptPromptAssembler._get_example_section(few_shots)
-        # example_section = "\n    # 抽出例(Few-shot Example)\n"
+        example_section = cls._get_example_section(few_shots)
         # 3. 今回の入力テキストを結合
         input_section = f"""
         # 入力
@@ -62,4 +61,3 @@ class ReceiptPromptAssembler:
         """
 
         return base_prompt + example_section + input_section
-    

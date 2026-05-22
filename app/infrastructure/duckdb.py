@@ -1,4 +1,3 @@
-import os
 import duckdb
 from pathlib import Path
 from app.config import settings

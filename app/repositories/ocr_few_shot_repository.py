@@ -1,4 +1,3 @@
-import os
 import duckdb
 from fastapi.concurrency import run_in_threadpool
 from app.config import settings
