@@ -2,7 +2,7 @@
 import redis.asyncio as aioredis
 import json
 from typing import Any,AsyncGenerator
-from app.config import settings
+from app.core.config import settings
 
 REDIS_URL = settings.REDIS_URL
 # アプリ全体で共有するコネクションプール（最初は空）
