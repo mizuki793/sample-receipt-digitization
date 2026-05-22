@@ -2,16 +2,14 @@
 
 from pathlib import Path
 import logging
-from PIL import Image
-import pytesseract
-import cv2
+from fastapi.concurrency import run_in_threadpool
 from app.config import settings
 from app.repositories.job import JobRepository
 from app.services.prompts import create_receipt_prompt
 from app.schemas.receipt import ReceiptAnalysisResponse
 from app.services.call_llm import call_llm_json
+from app.services.call_ocr import process_ocr_sync
 
-custom_config = '-l jpn+eng --oem 3 --psm 6'
 
 # todo:バックグラウンドで実行される非同期関数
 async def analysis_task(job_id: str, file_path: Path):
@@ -61,16 +59,7 @@ async def _validate_and_result(result_dict: dict) -> dict:
  
 #画像の編集、画像の文字列読み込み
 async def _convert_img_to_raw_text(img_path) -> str:
-    img = cv2.imread(img_path)
-    img_resize = cv2.resize(img, None, fx=2.5, fy= 2.5, interpolation=cv2.INTER_CUBIC)
-    gray = cv2.cvtColor(img_resize, cv2.COLOR_BGR2GRAY)
-    blerred = cv2.GaussianBlur(gray,(3,3),0)
-    _, thresh = cv2.threshold(blerred, 150, 255, cv2.THRESH_BINARY)
-    pil_img = Image.fromarray(thresh)
-    text = pytesseract.image_to_string(
-        pil_img, 
-        config=custom_config
-    )
+    text = await run_in_threadpool(process_ocr_sync, img_path)
     print(text)
     return text
 
