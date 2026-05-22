@@ -22,7 +22,7 @@ async def analyses_receipts(
     background_tasks.add_task(analysis_task, job_id, saved_file_path)
     return { "job_id": job_id }
 
-@router.get("/jobs/status/{job_id}")
+@router.get("/receipt/jobs/status/{job_id}")
 async def view_status_receipt(job_id: str):
   res = await view_receipt_status(job_id)
   return res

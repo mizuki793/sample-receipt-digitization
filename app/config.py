@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     GEMINI_API_KEY: str = "mock-key-for-local-testing"
     LLM_MODEL_NAME: str ="Gemini 2.5 Flash"
+    DUCKDB_PATH: str = "data/ocr_few_shots.duckdb"
 
     model_config = SettingsConfigDict(
         env_file=".env",

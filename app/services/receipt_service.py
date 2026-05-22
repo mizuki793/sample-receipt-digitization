@@ -1,25 +1,23 @@
 # BackgroundTasks で動く、重い解析処理やOpenAI連携ロジック
-
 from pathlib import Path
 import logging
 from fastapi.concurrency import run_in_threadpool
 from app.config import settings
 from app.repositories.job import JobRepository
-from app.services.prompts import create_receipt_prompt
+from app.repositories.ocr_few_shot_repository import OcrFewShotRepository
 from app.schemas.receipt import ReceiptAnalysisResponse
 from app.services.call_llm import call_llm_json
 from app.services.call_ocr import process_ocr_sync
-
+from app.services.prompt_assembler import ReceiptPromptAssembler
 
 # todo:バックグラウンドで実行される非同期関数
 async def analysis_task(job_id: str, file_path: Path):
     await JobRepository.update_job_data(job_id, {"status": "PROCESSING"})
     print(file_path)
-    ocr_text = await _convert_img_to_raw_text(file_path)
-    print(ocr_text)
+    raw_ocr_text = await _convert_img_to_raw_text(file_path)
+    receipt_prompt = await _process_ocr_analysis(raw_ocr_text)
     MODEL_NAME = settings.LLM_MODEL_NAME
 
-    receipt_prompt = create_receipt_prompt(ocr_text)
     try:
         result_dict = await call_llm_json(
             prompt=receipt_prompt,
@@ -62,6 +60,11 @@ async def _convert_img_to_raw_text(img_path) -> str:
     text = await run_in_threadpool(process_ocr_sync, img_path)
     print(text)
     return text
+
+async def _process_ocr_analysis(raw_ocr_text) -> str:
+    few_shots = await OcrFewShotRepository.find_similar_shots(raw_ocr_text, limit=2)
+    dynamic_prompt = ReceiptPromptAssembler.build_few_shot_receipt_prompt(raw_ocr_text, few_shots)
+    return dynamic_prompt
 
 async def fetch_job_status(job_id:str):
     status = await JobRepository.get_job(job_id)

@@ -9,3 +9,4 @@ app/**/__pycache__/
 *.pyc
 .devcontainer/
 .python-version
+data/*.duckdb
