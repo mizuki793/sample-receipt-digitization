@@ -2,7 +2,7 @@
 from pathlib import Path
 import logging
 from fastapi.concurrency import run_in_threadpool
-from app.config import settings
+from app.core.config import settings
 from app.repositories.job import JobRepository
 from app.repositories.ocr_few_shot_repository import OcrFewShotRepository
 from app.schemas.receipt import ReceiptAnalysisResponse

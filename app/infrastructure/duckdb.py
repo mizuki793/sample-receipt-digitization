@@ -1,6 +1,6 @@
 import duckdb
 from pathlib import Path
-from app.config import settings
+from app.core.config import settings
 
 def init_database():
     db_path = settings.DUCKDB_PATH
@@ -31,13 +31,13 @@ def init_database():
                     "001",
                     "ファミマ",
                     "ファミリーマート 渋谷店\n5A ￥150\nGait ￥150", 
-                    '{"store_name": "ファミリーマート 渋谷店", "items": [{"name": "卵", "price": 150}], "total": 150}'
+                    '{"store_name": "ファミリーマート 渋谷店", "items": [{"name": "卵", "price": 150, "category":"日配品（乳製品・豆腐・卵・パンなど）"}], "total": 150}'
                 ),
                 (
                     "002",
                     "セブン",
                     "セブン-イレブン 新宿店\nおにぎり 120\n5A 200\n合計 320", 
-                    '{"store_name": "セブン-イレブン 新宿店", "items": [{"name": "おにぎり", "price": 120}, {"name": "卵", "price": 200}], "total": 320}'
+                    '{"store_name": "セブン-イレブン 新宿店", "items": [{"name": "おにぎり", "price": 120,"category":"惣菜）"}, {"name": "卵", "price": 200,"category":"日配品（乳製品・豆腐・卵・パンなど）"}], "total": 320}'
                 ),
             ]
             conn.executemany("""

@@ -6,6 +6,8 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = "mock-key-for-local-testing"
     LLM_MODEL_NAME: str ="Gemini 2.5 Flash"
     DUCKDB_PATH: str = "data/ocr_few_shots.duckdb"
+    STORAGE_TYPE: str = "LOCAL"
+    LOCAL_DATA_SET_BASE_DIR: str = "/app/data/archive"
 
     model_config = SettingsConfigDict(
         env_file=".env",
