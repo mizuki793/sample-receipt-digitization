@@ -28,11 +28,12 @@ def main():
 
         issue_context = ""
         if issues:
-            issue_num = issue_info.get("number")
-            print(f"関連するIssue #{issue_num} の本文を取得中...")
-            issue_view_cmd = ["gh", "issue", "view", str(issue_num), "--json", "body"]
-            issue_data = json.loads(subprocess.check_output(issue_view_cmd, text=True))
-            issue_context += f"\n【Issue #{issue_num} の本文】:\n{issue_data.get('body', '')}\n"
+            for issue_info in issues:
+                issue_num = issue_info.get("number")
+                print(f"関連するIssue #{issue_num} の本文を取得中...")
+                issue_view_cmd = ["gh", "issue", "view", str(issue_num), "--json", "body"]
+                issue_data = json.loads(subprocess.check_output(issue_view_cmd, text=True))
+                issue_context += f"\n【Issue #{issue_num} の本文】:\n{issue_data.get('body', '')}\n"
         
         else:
             issue_context = "\n（このPRに直接紐づくGitHubのClosing Issueはありませんでした）\n"
