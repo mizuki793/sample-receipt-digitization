@@ -13,7 +13,8 @@ class ReceiptPromptAssembler:
                 example_section += f"        ```json\n{shot['corrected_json']}\n        ```\n"
         else:
         # DuckDBが空、またはヒットしなかった場合のフォールバック（既存の固定例1）
-            example_section += """    ## 例1: テキスト入力
+            example_section += """  ## 例1: 固定の修正実績（基本ケース）  
+        ## 例1: テキスト入力
 ```text
         ファミリーマート⚪︎⚪︎店
         東京都江東区夢の島2-1-2
@@ -24,7 +25,17 @@ class ReceiptPromptAssembler:
         合計               ¥201
     ```
     ## 例2:出力期待値
-    - LiteLLMの response_format に指定されたスキーマに従って、正確なJSONオブジェクトのみを出力してください。
+```json
+    {
+        "store_name": "ファミリーマート⚪︎⚪︎店",
+        "transaction_date": "2026-05-18T12:09:00",
+        "items": [
+            {"item_name": "アサヒミツヤウルトラストロングレモン", "quantity": 1, "unit_price": 96},
+            {"item_name": "ニッコウアブラアゲ5マイ", "quantity": 1, "unit_price": 105}
+        ],
+        "total_amount": 201
+    }
+    ```
 """
         return example_section
 
