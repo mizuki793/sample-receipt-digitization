@@ -1,13 +1,16 @@
 import asyncio
 import json
+from typing import Type, Union, Dict, Any
 import logging
 import litellm
 from litellm import acompletion
+from pydantic import BaseModel
 
 async def call_llm_json(
     prompt: str,
     ai_model: str, 
-    max_retries: int = 3, 
+    response_schema: Union[Type[BaseModel], Dict[str, Any]] = {"type": "json_object"},
+    max_retries: int = 4, 
     backoff_seconds: int = 60
 ) -> dict:
     """
@@ -19,7 +22,7 @@ async def call_llm_json(
             response = await acompletion(
                 model=ai_model,
                 messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_object"},
+                response_format=response_schema,
                 temperature=0.0
             )
             raw_json_str = response.choices[0].message.content
@@ -32,7 +35,7 @@ async def call_llm_json(
             logging.warning(f"Waiting for {backoff_seconds} seconds before retrying...")
             await asyncio.sleep(backoff_seconds)
 
-        except litellm.InternalServerError as e:
+        except (litellm.InternalServerError, litellm.ServiceUnavailableError) as e:
             logging.warning(f"[Attempt {attempt}/{max_retries}] LLM Server Error (500/503): {str(e)}")
             if attempt == max_retries:
                 raise e
