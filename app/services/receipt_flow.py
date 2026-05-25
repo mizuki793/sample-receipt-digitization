@@ -3,6 +3,7 @@
 ## ex:複数リソースのパイプライン（結合）など
 
 from pathlib import Path
+import os
 from typing import Any
 from fastapi import UploadFile
 from app.services.receipt_service import fetch_job_status
@@ -17,10 +18,14 @@ async def init_receipt_pipeline(file_object: UploadFile, job_id:str) -> str:
 
 async def _save_raw_receipt_image(file_object: UploadFile, job_id:str) -> str:
     storage_client = get_storage_client()
-    saved_file_path = await storage_client.put_object(
+    _, extension = os.path.splitext(file_object.filename)
+    file_bytes = await file_object.read()
+    if not extension:
+        extension = ".jpg"
+    saved_file_path = await storage_client.put_object_file(
          partition_key = "receipt_images",
-         file_name=f"{job_id}.jpg",
-         data=file_object
+         file_name=f"{job_id}{extension}",
+         data=file_bytes
     )
     return str(saved_file_path)
 

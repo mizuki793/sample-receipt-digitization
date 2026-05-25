@@ -29,7 +29,7 @@ class ReceiptStagingService:
 
         cleaned_dict = storage_data.model_dump(mode="json", by_alias=True)
 
-        saved_location = await storage_client.put_object(
+        saved_location = await storage_client.put_object_json(
             partition_key="tmp",
             file_name=f"{job_id}.json",
             data=cleaned_dict
@@ -64,7 +64,7 @@ class ReceiptStagingService:
         file_name = f"{job_id}.json"
 
         try:
-            saved_location = await storage_client.put_object(
+            saved_location = await storage_client.put_object_json(
                 partition_key=partition_key,
                 file_name=file_name,
                 data=cleaned_dict

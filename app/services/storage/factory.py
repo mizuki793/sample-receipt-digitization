@@ -1,9 +1,18 @@
+from abc import ABC, abstractmethod
 from app.core.config import settings
 from app.services.storage.local_client import LocalStorageClient
 from app.services.storage.s3_client import S3StorageClient
 
-# 💡 戻り値の型定義（BaseStorageClient）を外し、どちらかを返すだけにする
-def get_storage_client():
+class BaseStorageClient(ABC):
+    @abstractmethod
+    async def put_object_json(self, partition_key: str, file_name: str, data: dict) -> str:
+        pass
+
+    @abstractmethod
+    async def put_object_file(self, partition_key: str, file_name: str, data: bytes) -> str:
+        pass
+
+def get_storage_client() -> BaseStorageClient: 
     if settings.STORAGE_TYPE == "S3":
         return S3StorageClient()
     return LocalStorageClient()

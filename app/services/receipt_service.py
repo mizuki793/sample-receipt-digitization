@@ -38,8 +38,15 @@ async def analysis_task(job_id: str, file_path: Path):
             "result": {"error": f"AI解析処理が失敗しました: {str(e)}"}
         })
         return
-    validation_result = await _validate_and_result(result_dict['result'])
-    validated_data: ReceiptAnalysisResponse = validation_result["result"]
+    validated_data = await _validate_and_result(result_dict)
+    if not validated_data:
+        await ReceiptTmpDataRepository.remove_job_id_from_status_set("processing", job_id)
+        await ReceiptTmpDataRepository.add_job_id_to_status_set("failed", job_id)
+        await JobRepository.update_job_data(job_id, {
+            "status": "FAILED",
+            "result": {"error": "AIの出力がスキーマと一致しませんでした"}
+        })
+        return
     serialized_result_dict = validated_data.model_dump(mode="json")
     print(serialized_result_dict)
     try:
@@ -71,22 +78,15 @@ async def analysis_task(job_id: str, file_path: Path):
             "result": {"error": f"解析完了後のデータハンドリングに失敗しました: {str(e)}"}
         })
 
-async def _validate_and_result(result_dict: dict) -> dict:
+async def _validate_and_result(result_dict: dict)-> ReceiptAnalysisResponse | None:
     """
     取得した辞書データをPydanticで型チェックし、金額計算の検証を行ってjob内容を返却する。
     """
     try:
-        validated_data = ReceiptAnalysisResponse(**result_dict)
+        return ReceiptAnalysisResponse(**result_dict)
     except Exception as e:
         logging.error(f"AIの出力がスキーマと一致しませんでした: {str(e)}")
-        return { 
-            "status": "FAILED",
-            "result": {"error": f"AIの出力がスキーマと一致しませんでした: {str(e)}"}            
-        }
-    return {
-        "status": "SUCCESS",
-        "result": validated_data
-    }
+        return None
  
 #画像の編集、画像の文字列読み込み
 async def _convert_img_to_raw_text(img_path) -> str:
