@@ -38,3 +38,16 @@ class ReceiptAnalysisResponse(BaseModel):
         if calculated_total + (self.tax or 0) != self.total_amount:
             self.needs_correction = True
         return self
+    
+# アプリ内ストレージ（/app/data/tmp）に一時保存する際の全体構造
+class ReceiptTmpStorageData(BaseModel):
+    job_id: str
+    raw_ocr_text: str
+    analysis_result: ReceiptAnalysisResponse
+
+# アプリ内ストレージに永続化保存する際の全体構造
+class ReceiptStorageData(BaseModel):
+    job_id: str
+    raw_ocr_text: str
+    corrected_json: ReceiptAnalysisResponse
+    updated_at: datetime

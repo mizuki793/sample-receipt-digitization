@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     LLM_MODEL_NAME: str ="Gemini 2.5 Flash"
     DUCKDB_PATH: str = "data/ocr_few_shots.duckdb"
     STORAGE_TYPE: str = "LOCAL"
-    LOCAL_DATA_SET_BASE_DIR: str = "/app/data/archive"
+    LOCAL_DATA_SET_BASE_DIR: str = "/app/data"
 
     model_config = SettingsConfigDict(
         env_file=".env",

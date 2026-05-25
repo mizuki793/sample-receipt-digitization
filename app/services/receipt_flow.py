@@ -13,11 +13,11 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 async def init_receipt_pipeline(file_object: UploadFile, job_id:str) -> str:
     await JobRepository.create_job(job_id, {"status": "PENDING"})
-    img_path = await save_for_local_receipt_image(file_object, job_id)
+    img_path = await _save_for_local_receipt_image(file_object, job_id)
     return img_path
 
 # ファイル保存処理、将来的にクラウドに上げることも踏まえた切り出し
-async def save_for_local_receipt_image(file_object: UploadFile, job_id:str) -> str:
+async def _save_for_local_receipt_image(file_object: UploadFile, job_id:str) -> str:
     saved_file_path = UPLOAD_DIR / f"{job_id}.jpg"
     content = await file_object.read()
     with open(saved_file_path, "wb") as buffer:

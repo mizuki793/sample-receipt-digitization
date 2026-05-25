@@ -107,7 +107,7 @@
 - 仮想環境作成
   > docker-compose up -d  
 - サーバー起動
-  > docker compose up --build
+  > docker compose up
   - cf.仮想環境削除
     > docker-compose down
   - cf.キャッシュなしbuild(web or redis)

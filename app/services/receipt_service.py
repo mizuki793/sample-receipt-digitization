@@ -4,15 +4,18 @@ import logging
 from fastapi.concurrency import run_in_threadpool
 from app.core.config import settings
 from app.repositories.job import JobRepository
+from app.repositories.receipt_tmp_data import ReceiptTmpDataRepository
 from app.repositories.ocr_few_shot_repository import OcrFewShotRepository
 from app.schemas.receipt import ReceiptAnalysisResponse
 from app.services.call_llm import call_llm_json
 from app.services.call_ocr import process_ocr_sync
 from app.services.prompt_assembler import ReceiptPromptAssembler
+from app.services.receipt_staging_service import ReceiptStagingService
 
 # todo:バックグラウンドで実行される非同期関数
 async def analysis_task(job_id: str, file_path: Path):
     await JobRepository.update_job_data(job_id, {"status": "PROCESSING"})
+    await ReceiptTmpDataRepository.add_to_set_receipt_tmp_data("processing",job_id)
     print(file_path)
     raw_ocr_text = await _convert_img_to_raw_text(file_path)
     receipt_prompt = await _process_ocr_analysis(raw_ocr_text)
@@ -27,15 +30,46 @@ async def analysis_task(job_id: str, file_path: Path):
         )
         print(result_dict)
     except Exception as e:
+        await ReceiptTmpDataRepository.remove_from_set_receipt_tmp_data("processing",job_id)
+        await ReceiptTmpDataRepository.add_to_set_receipt_tmp_data("failed",job_id)
         logging.error(f"AI解析処理が失敗しました: {str(e)}")
         await JobRepository.update_job_data(job_id, {
             "status": "FAILED",
             "result": {"error": f"AI解析処理が失敗しました: {str(e)}"}
         })
         return
-    job_result_status = await _validate_and_result(result_dict)
-
-    await JobRepository.update_job_data(job_id, job_result_status) 
+    validation_result = await _validate_and_result(result_dict['result'])
+    validated_data: ReceiptAnalysisResponse = validation_result["result"]
+    serialized_result_dict = validated_data.model_dump(mode="json")
+    print(serialized_result_dict)
+    try:
+        if validated_data.needs_correction:
+            await ReceiptStagingService.stage_unverified_receipt(
+                job_id=job_id,
+                raw_ocr_text=raw_ocr_text,
+                validated_data=validated_data
+            )
+            await ReceiptTmpDataRepository.add_to_set_receipt_tmp_data("needs_correction",job_id)
+        else:
+            await ReceiptStagingService.store_verified_receipt(
+                job_id=job_id,
+                raw_ocr_text=raw_ocr_text,
+                validated_data=validated_data
+            )
+            await ReceiptTmpDataRepository.add_to_set_receipt_tmp_data("success",job_id)
+        await ReceiptTmpDataRepository.remove_from_set_receipt_tmp_data("processing",job_id)
+        await JobRepository.update_job_data(job_id, {
+            "status": "SUCCESS",
+            "result": serialized_result_dict
+        })
+    except Exception as e:
+        await ReceiptTmpDataRepository.remove_from_set_receipt_tmp_data("processing",job_id)
+        await ReceiptTmpDataRepository.add_to_set_receipt_tmp_data("failed",job_id)
+        logging.error(f"解析完了後のデータハンドリングに失敗しました: {str(e)}")
+        await JobRepository.update_job_data(job_id,{
+            "status": "FAILED",
+            "result": {"error": f"解析完了後のデータハンドリングに失敗しました: {str(e)}"}
+        })
 
 async def _validate_and_result(result_dict: dict) -> dict:
     """
@@ -49,10 +83,9 @@ async def _validate_and_result(result_dict: dict) -> dict:
             "status": "FAILED",
             "result": {"error": f"AIの出力がスキーマと一致しませんでした: {str(e)}"}            
         }
-    
     return {
         "status": "SUCCESS",
-        "result": validated_data.model_dump(mode="json")
+        "result": validated_data
     }
  
 #画像の編集、画像の文字列読み込み
