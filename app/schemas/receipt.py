@@ -18,7 +18,7 @@ SupermarketCategory = Literal[
 class ReceiptItem(BaseModel):
     item_name: str  = Field(description="購入商品名")
     unit_price: int = Field(description="購入商品の単価")
-    quantity: int = Field(default=1, description="購入個数(抽出できない場合はnull)")
+    quantity: int = Field(default=1, description="購入個数(抽出できない場合は1)")
     category: SupermarketCategory | None = Field(
         description="売場部門における日本の一般的なスーパーにおける商品分類(抽出できない場合はnull)"
     )
