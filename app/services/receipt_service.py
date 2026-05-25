@@ -15,7 +15,7 @@ from app.services.receipt_staging_service import ReceiptStagingService
 # todo:バックグラウンドで実行される非同期関数
 async def analysis_task(job_id: str, file_path: Path):
     await JobRepository.update_job_data(job_id, {"status": "PROCESSING"})
-    await ReceiptTmpDataRepository.add_to_set_receipt_tmp_data("processing",job_id)
+    await ReceiptTmpDataRepository.add_job_id_to_status_set("processing",job_id)
     print(file_path)
     raw_ocr_text = await _convert_img_to_raw_text(file_path)
     receipt_prompt = await _process_ocr_analysis(raw_ocr_text)
@@ -30,8 +30,8 @@ async def analysis_task(job_id: str, file_path: Path):
         )
         print(result_dict)
     except Exception as e:
-        await ReceiptTmpDataRepository.remove_from_set_receipt_tmp_data("processing",job_id)
-        await ReceiptTmpDataRepository.add_to_set_receipt_tmp_data("failed",job_id)
+        await ReceiptTmpDataRepository.remove_job_id_from_status_set("processing",job_id)
+        await ReceiptTmpDataRepository.add_job_id_to_status_set("failed",job_id)
         logging.error(f"AI解析処理が失敗しました: {str(e)}")
         await JobRepository.update_job_data(job_id, {
             "status": "FAILED",
@@ -49,22 +49,22 @@ async def analysis_task(job_id: str, file_path: Path):
                 raw_ocr_text=raw_ocr_text,
                 validated_data=validated_data
             )
-            await ReceiptTmpDataRepository.add_to_set_receipt_tmp_data("needs_correction",job_id)
+            await ReceiptTmpDataRepository.add_job_id_to_status_set("needs_correction",job_id)
         else:
             await ReceiptStagingService.store_verified_receipt(
                 job_id=job_id,
                 raw_ocr_text=raw_ocr_text,
                 validated_data=validated_data
             )
-            await ReceiptTmpDataRepository.add_to_set_receipt_tmp_data("success",job_id)
-        await ReceiptTmpDataRepository.remove_from_set_receipt_tmp_data("processing",job_id)
+            await ReceiptTmpDataRepository.add_job_id_to_status_set("success",job_id)
+        await ReceiptTmpDataRepository.remove_job_id_from_status_set("processing",job_id)
         await JobRepository.update_job_data(job_id, {
             "status": "SUCCESS",
             "result": serialized_result_dict
         })
     except Exception as e:
-        await ReceiptTmpDataRepository.remove_from_set_receipt_tmp_data("processing",job_id)
-        await ReceiptTmpDataRepository.add_to_set_receipt_tmp_data("failed",job_id)
+        await ReceiptTmpDataRepository.remove_job_id_from_status_set("processing",job_id)
+        await ReceiptTmpDataRepository.add_job_id_to_status_set("failed",job_id)
         logging.error(f"解析完了後のデータハンドリングに失敗しました: {str(e)}")
         await JobRepository.update_job_data(job_id,{
             "status": "FAILED",

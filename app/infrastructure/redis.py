@@ -4,7 +4,6 @@ from typing import Any,AsyncGenerator
 from app.core.config import settings
 
 REDIS_URL = settings.REDIS_URL
-# アプリ全体で共有するコネクションプール（最初は空）
 redis_pool: aioredis.ConnectionPool | None = None
 
 def init_redis_pool():
@@ -29,7 +28,6 @@ async def get_redis_client() -> AsyncGenerator[aioredis.Redis, None]:
         # リクエスト終了時に自動で接続を閉じる（プールには戻る）
         await client.aclose()
 
-# app/infrastructure/redis.py (追加する関数のイメージ)
 
 async def set_value(client: aioredis.Redis, key: str, value: Any, expire_sec: int | None = None) -> None:
     serialized_value = json.dumps(value) if isinstance(value, (dict, list)) else str(value)

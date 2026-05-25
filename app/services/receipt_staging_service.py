@@ -45,7 +45,7 @@ class ReceiptStagingService:
         """
         検証・補正が完了した成功データを、将来のDuckDBパースや
         Few-Shot検索に備えてHive形式のパーティション構造で永続化保存する。
-        出力構造: /app/data/archive/year=YYYY/month=MM/day=DD/{job_id}.json
+        出力構造: /app/data/archive/YYYY/MM/DD/{job_id}.json
         """
         storage_client = get_storage_client()
         now = datetime.now()
@@ -53,8 +53,8 @@ class ReceiptStagingService:
         storage_data = ReceiptStorageData(
             job_id=job_id,
             raw_ocr_text=raw_ocr_text,
-            corrected_json=ReceiptAnalysisResponse,
-            updated_at=now.isoformat()
+            corrected_json=validated_data,
+            updated_at=now
         )
 
         cleaned_dict = storage_data.model_dump(mode="json", by_alias=True)
