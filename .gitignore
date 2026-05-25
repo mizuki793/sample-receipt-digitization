@@ -10,3 +10,6 @@ app/**/__pycache__/
 .devcontainer/
 .python-version
 data/*.duckdb
+data/archive/tmp/
+data/receipt_images/
+data/tmp/

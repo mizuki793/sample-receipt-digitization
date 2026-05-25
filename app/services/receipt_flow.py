@@ -3,25 +3,30 @@
 ## ex:複数リソースのパイプライン（結合）など
 
 from pathlib import Path
+import os
 from typing import Any
 from fastapi import UploadFile
 from app.services.receipt_service import fetch_job_status
 from app.repositories.job import JobRepository
-
-UPLOAD_DIR = Path("/tmp/receipt_imgs")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+from app.core.config import settings
+from app.services.storage.factory import get_storage_client
 
 async def init_receipt_pipeline(file_object: UploadFile, job_id:str) -> str:
     await JobRepository.create_job(job_id, {"status": "PENDING"})
-    img_path = await save_for_local_receipt_image(file_object, job_id)
+    img_path = await _save_raw_receipt_image(file_object, job_id)
     return img_path
 
-# ファイル保存処理、将来的にクラウドに上げることも踏まえた切り出し
-async def save_for_local_receipt_image(file_object: UploadFile, job_id:str) -> str:
-    saved_file_path = UPLOAD_DIR / f"{job_id}.jpg"
-    content = await file_object.read()
-    with open(saved_file_path, "wb") as buffer:
-        buffer.write(content)
+async def _save_raw_receipt_image(file_object: UploadFile, job_id:str) -> str:
+    storage_client = get_storage_client()
+    _, extension = os.path.splitext(file_object.filename)
+    file_bytes = await file_object.read()
+    if not extension:
+        extension = ".jpg"
+    saved_file_path = await storage_client.put_object_file(
+         partition_key = "receipt_images",
+         file_name=f"{job_id}{extension}",
+         data=file_bytes
+    )
     return str(saved_file_path)
 
 async def view_receipt_status(job_id: str):
