@@ -30,7 +30,6 @@ async def analysis_task(job_id: str, file_path: Path):
         )
         print(result_dict)
     except Exception as e:
-        await ReceiptTmpDataRepository.remove_job_id_from_status_set("processing",job_id)
         await ReceiptTmpDataRepository.add_job_id_to_status_set("failed",job_id)
         logging.error(f"AI解析処理が失敗しました: {str(e)}")
         await JobRepository.update_job_data(job_id, {
@@ -40,7 +39,6 @@ async def analysis_task(job_id: str, file_path: Path):
         return
     validated_data = await _validate_and_result(result_dict)
     if not validated_data:
-        await ReceiptTmpDataRepository.remove_job_id_from_status_set("processing", job_id)
         await ReceiptTmpDataRepository.add_job_id_to_status_set("failed", job_id)
         await JobRepository.update_job_data(job_id, {
             "status": "FAILED",
@@ -64,19 +62,19 @@ async def analysis_task(job_id: str, file_path: Path):
                 validated_data=validated_data
             )
             await ReceiptTmpDataRepository.add_job_id_to_status_set("success",job_id)
-        await ReceiptTmpDataRepository.remove_job_id_from_status_set("processing",job_id)
         await JobRepository.update_job_data(job_id, {
             "status": "SUCCESS",
             "result": serialized_result_dict
         })
     except Exception as e:
-        await ReceiptTmpDataRepository.remove_job_id_from_status_set("processing",job_id)
-        await ReceiptTmpDataRepository.add_job_id_to_status_set("failed",job_id)
         logging.error(f"解析完了後のデータハンドリングに失敗しました: {str(e)}")
         await JobRepository.update_job_data(job_id,{
             "status": "FAILED",
             "result": {"error": f"解析完了後のデータハンドリングに失敗しました: {str(e)}"}
         })
+    finally:
+        await ReceiptTmpDataRepository.remove_job_id_from_status_set("processing",job_id)
+
 
 async def _validate_and_result(result_dict: dict)-> ReceiptAnalysisResponse | None:
     """
