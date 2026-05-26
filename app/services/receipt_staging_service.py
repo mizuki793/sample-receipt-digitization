@@ -39,7 +39,6 @@ class ReceiptStagingService:
         job_id: str,
         raw_ocr_text: str, 
         validated_data: ReceiptAnalysisResponse
-        #@fix successを人の手で修正したくなった場合の考慮がない
     ) -> str:
         """
         検証・補正が完了した成功データを、将来のDuckDBパースや

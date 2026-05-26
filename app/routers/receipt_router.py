@@ -1,15 +1,10 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from enum import Enum
 import uuid
 import logging
-from app.services import init_receipt_pipeline, analysis_task, view_receipt_status, view_job_ids_by_status, locked_receipt_status, fixed_receipt_data
+from app.services import init_receipt_pipeline, analysis_task, view_receipt_status, view_job_ids_by_status, lock_receipt_job, fix_receipt_job_data
 from app.core.validate import ImageValidator
-
-class JobStatus(str, Enum):
-    processing = "processing"
-    needs_correction = "needs_correction"
-    failed = "failed"
-    success = "success"
+from app.schemas.receipt import ReceiptFixRequest
+from app.schemas.job import JobStatus
 
 router = APIRouter(
     prefix="/api/v1",
@@ -30,7 +25,6 @@ async def analyses_receipts(
     background_tasks.add_task(analysis_task, job_id, saved_file_path)
     return { "job_id": job_id }
 
-# status="processing", "needs_correction", "failed", "success"
 @router.get("/receipt/jobs/{status}")
 async def get_job_ids_by_status(status: JobStatus):
     try:
@@ -55,7 +49,7 @@ async def get_job_detail(job_id: str):
 
 @router.post("/receipt/jobs/{job_id}/lock")
 async def lock_job_status(job_id: str):
-    res = await locked_receipt_status(job_id)
+    res = await lock_receipt_job(job_id)
     if res == None:
         raise HTTPException(
             status_code=404,
@@ -64,6 +58,6 @@ async def lock_job_status(job_id: str):
     return res
 
 @router.post("/receipt/jobs/{job_id}/fix")
-async def update_job_detail(job_id: str, raw_ocr_txt: str, fix_json:str):
-    res = await fixed_receipt_data(job_id, raw_ocr_txt, fix_json)
+async def update_job_detail(job_id: str, request_body: ReceiptFixRequest): 
+    res = await fix_receipt_job_data(job_id, request_body.raw_ocr_text, request_body.fixed_data)
     return res

@@ -12,6 +12,7 @@ from app.services.call_llm import call_llm_json
 from app.services.call_ocr import process_ocr_sync
 from app.services.prompt_assembler import ReceiptPromptAssembler
 from app.services.receipt_staging_service import ReceiptStagingService
+from app.schemas.job import JobStatus
 
 # todo:バックグラウンドで実行される非同期関数
 async def analysis_task(job_id: str, file_path: Path):
@@ -118,7 +119,7 @@ async def fetch_job_status(job_id:str)-> dict | None:
         logging.warning(f"ジョブ {job_id} に未知のステータス '{status}' が見つかりました。")
         return None
 
-async def locked_receipt_status(job_id)-> str | None: 
+async def lock_receipt_job(job_id)-> str | None: 
     logging.info(f"ジョブの編集ロック処理:{job_id}")
     job_status_data = await MongoJobRepository.get_job(job_id)
     
@@ -128,16 +129,18 @@ async def locked_receipt_status(job_id)-> str | None:
     
     status = job_status_data.get("status")
     
-    if status == "success" or status == "needs_correction" or status == "failed":
-        # fix:redisでの処理はmongoDBに統一する
+    if status in [JobStatus.SUCCESS.value, JobStatus.NEEDS_CORRECTION.value, JobStatus.FAILED.value]:
         await MongoJobRepository.update_job_data(job_id, {
-            "status": "processing"
+            "status": JobStatus.PROCESSING.value
         })
         return f"locked:{job_id}"
-    else:
+    elif status == JobStatus.PROCESSING.value:
         return f"lock済みのjob_id:{job_id}"
+    else:
+        logging.warning(f"ジョブ {job_id} に予期しないステータス '{status}' が見つかりました。")
+        raise ValueError(f"無効なジョブステータス: {status}")
 
-async def fixed_receipt_data(job_id: str, raw_ocr_text: str, fix_json:str) -> str | None:
+async def fix_receipt_job_data(job_id: str, raw_ocr_text: str, fixed_data: dict)-> str | None:
     logging.info(f"レシートデータの修正:{job_id}")
     job_status_data = await MongoJobRepository.get_job(job_id)
 
@@ -147,19 +150,17 @@ async def fixed_receipt_data(job_id: str, raw_ocr_text: str, fix_json:str) -> st
 
     status = job_status_data.get("status")
 
-    if status != "processing":
+    if status != JobStatus.PROCESSING.value:
         return f"処理フラグをされていないjob_idのため編集不可:{job_id}"
-    if status == "processing":
-        parsed_json = json.loads(fix_json)
-        validated_data = await _validate_and_result(parsed_json)
+    if status == JobStatus.PROCESSING.value:
         await ReceiptStagingService.store_verified_receipt(
             job_id=job_id,
             raw_ocr_text=raw_ocr_text,
-            validated_data=validated_data
+            validated_data=fixed_data
         )
         file_name = f"{job_id}.json"
         await ReceiptStagingService.delete_receipt_file(file_name=file_name, file_path="tmp")
         await MongoJobRepository.update_job_data(job_id, {
-            "status": "success"
+            "status": JobStatus.SUCCESS.value
         })
         return "success"
