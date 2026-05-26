@@ -14,7 +14,7 @@ class BaseStorageClient(ABC):
         pass
 
     @abstractmethod
-    async def del_object_file(self, file_path: str, file_name: str) -> Path | str: # 戻り値の型も修正
+    async def del_object_file(self, file_path: str, file_name: str) -> str:
         pass
 
 def get_storage_client() -> BaseStorageClient: 

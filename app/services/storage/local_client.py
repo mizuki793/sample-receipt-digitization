@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 import aiofiles
 from pathlib import Path
 import logging
@@ -31,7 +30,7 @@ class LocalStorageClient():
 
         return str(target_file_path)
     
-    async def del_object_file(self, file_path: str, file_name: str) -> Path:
+    async def del_object_file(self, file_path: str, file_name: str) -> str:
         target_file_path = self.base_dir / file_path / file_name
         try:
             await aiofiles.os.remove(target_file_path)
