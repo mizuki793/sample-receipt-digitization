@@ -13,3 +13,4 @@ data/*.duckdb
 data/archive/tmp/
 data/receipt_images/
 data/tmp/
+data/archive/

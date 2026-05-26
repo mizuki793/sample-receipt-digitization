@@ -51,3 +51,8 @@ class ReceiptStorageData(BaseModel):
     raw_ocr_text: str
     corrected_json: ReceiptAnalysisResponse
     updated_at: datetime
+
+# txt手動補正リクエストボディ定義
+class ReceiptFixRequest(BaseModel):
+    raw_ocr_text: str = Field(description="修正前の生OCRテキスト")
+    fixed_data: ReceiptAnalysisResponse = Field(description="人間が修正したJSON（構造はReceiptAnalysisResponseに準ずる）")

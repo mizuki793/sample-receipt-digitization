@@ -1,10 +1,10 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 from datetime import datetime, timezone
 from fastapi.concurrency import run_in_threadpool
 from app.infrastructure import mongodb as mongo_infra
+from app.schemas.job import JobStatus
 
-class MongoJobRepository:
-    
+class MongoJobRepository:    
     @classmethod
     async def create_job(cls, job_id: str, status: str) -> None:
         """新しいジョブを初期ステータスで作成（MongoDB永続層）"""
@@ -36,6 +36,22 @@ class MongoJobRepository:
         await run_in_threadpool(_execute)
 
     @classmethod
+    async def update_job_status_atomically(cls, job_id: str, old_status: JobStatus, new_status: JobStatus) -> bool:
+        """
+        ジョブステータスをアトミックに更新します。
+        現在のステータスが `old_status` と一致する場合のみ、`new_status` に更新します。
+        """
+        def _execute():
+            db = mongo_infra.mongo_client["receipt_db"]
+            collection = db["jobs"]
+            result = collection.update_one(
+                {"job_id": job_id, "status": old_status.value},
+                {"$set": {"status": new_status.value, "updated_at": datetime.now(timezone.utc)}}
+            )
+            return result.modified_count > 0
+        return await run_in_threadpool(_execute)
+
+    @classmethod
     async def get_job(cls, job_id: str) -> dict | None:
         """指定されたjob_idのジョブデータを取得（MongoDB永続層）"""
         def _execute():
@@ -47,8 +63,20 @@ class MongoJobRepository:
             
         if not raw_result:
             return None
-        # fix: リポジトリ層で _id フィールドを削除する処理は、責務の分離の観点からプレゼンテーション層やサービス層で行うことを検討
-        if "_id" in raw_result:
-            del raw_result["_id"]
-            
         return raw_result
+
+    @classmethod
+    async def get_job_ids_by_status(cls, status: JobStatus) -> List[str]:
+        """一覧取得API用：指定ステータスを持つ全 job_id をリストで取得"""
+        def _execute():
+            db = mongo_infra.mongo_client["receipt_db"]
+            collection = db["jobs"]
+            
+            # statusが一致するドキュメントの job_id だけを高速スキャン
+            cursor = collection.find(
+                {"status": status},
+                {"job_id": 1, "_id": 0}
+            )
+            return [doc["job_id"] for doc in cursor if "job_id" in doc]
+            
+        return await run_in_threadpool(_execute)

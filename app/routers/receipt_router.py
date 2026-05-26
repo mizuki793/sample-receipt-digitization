@@ -1,15 +1,10 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from enum import Enum
 import uuid
 import logging
-from app.services import init_receipt_pipeline, analysis_task, view_receipt_status, view_job_ids_by_status
+from app.services import init_receipt_pipeline, analysis_task, view_receipt_status, view_job_ids_by_status, lock_receipt_job, fix_receipt_job_data
 from app.core.validate import ImageValidator
-
-class JobStatus(str, Enum):
-    processing = "processing"
-    needs_correction = "needs_correction"
-    failed = "failed"
-    success = "success"
+from app.schemas.receipt import ReceiptFixRequest
+from app.schemas.job import JobStatus
 
 router = APIRouter(
     prefix="/api/v1",
@@ -30,14 +25,13 @@ async def analyses_receipts(
     background_tasks.add_task(analysis_task, job_id, saved_file_path)
     return { "job_id": job_id }
 
-# status="processing", "needs_correction", "failed", "success"
 @router.get("/receipt/jobs/{status}")
 async def get_job_ids_by_status(status: JobStatus):
     try:
         job_ids: list[str] = await view_job_ids_by_status(status)
         return job_ids
     except Exception as e:
-        logging.error(f"RedisからのID取得に失敗しました: {str(e)}")
+        logging.error(f"ID取得に失敗しました: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail="インデックスの取得に失敗しました"
@@ -52,3 +46,48 @@ async def get_job_detail(job_id: str):
             detail=f"指定されたジョブID '{job_id}' のデータが見つかりませんでした。"
         )
     return res
+
+@router.post("/receipt/jobs/{job_id}/lock")
+async def lock_job_status(job_id: str):
+    try:
+        res = await lock_receipt_job(job_id)
+        if res == None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"指定されたジョブID '{job_id}' のデータが見つかりませんでした。"
+            )
+        if "message" in res and "ロックに失敗しました" in res["message"]:
+            raise HTTPException(
+                status_code=409,
+                detail=res["message"]
+            )        
+        return res
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except Exception as e:
+        logging.error(f"ジョブのロック処理に失敗しました: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="ジョブのロック処理中に予期せぬエラーが発生しました。"
+        )
+@router.post("/receipt/jobs/{job_id}/fix")
+async def update_job_detail(job_id: str, request_body: ReceiptFixRequest): 
+    try:
+        res = await fix_receipt_job_data(job_id, request_body.raw_ocr_text, request_body.fixed_data)
+        if res is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"指定されたジョブID '{job_id}' のデータが見つかりませんでした。"
+            )
+        if "message" in res and "編集不可" in res["message"]:
+            raise HTTPException(
+                status_code=400,
+                detail=res["message"]
+            )
+        return res
+    except Exception as e:
+        logging.error(f"ジョブデータの修正に失敗しました: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="ジョブデータの修正中に予期せぬエラーが発生しました。"
+        )
