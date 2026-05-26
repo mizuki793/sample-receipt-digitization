@@ -1,6 +1,4 @@
-# app/services/__init__.py
-# 内部の各ファイルから関数を呼び寄せておく
-from app.services.receipt_flow import init_receipt_pipeline, view_receipt_status
+from app.services.receipt_flow import init_receipt_pipeline, view_receipt_status, view_job_ids_by_status
 from app.services.receipt_service import analysis_task, fetch_job_status
 from app.services.call_llm import call_llm_json
 
@@ -9,7 +7,7 @@ __all__ = [
     "init_receipt_pipeline",
     "analysis_task",
     "view_receipt_status",
+    "view_job_ids_by_status",
     "fetch_job_status",
     "call_llm_json"
 ]
-

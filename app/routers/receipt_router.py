@@ -1,7 +1,15 @@
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from enum import Enum
 import uuid
-from app.services import init_receipt_pipeline, analysis_task, view_receipt_status
+import logging
+from app.services import init_receipt_pipeline, analysis_task, view_receipt_status, view_job_ids_by_status
 from app.core.validate import ImageValidator
+
+class JobStatus(str, Enum):
+    processing = "processing"
+    needs_correction = "needs_correction"
+    failed = "failed"
+    success = "success"
 
 router = APIRouter(
     prefix="/api/v1",
@@ -22,8 +30,25 @@ async def analyses_receipts(
     background_tasks.add_task(analysis_task, job_id, saved_file_path)
     return { "job_id": job_id }
 
-@router.get("/receipt/jobs/status/{job_id}")
-async def view_status_receipt(job_id: str):
-  res = await view_receipt_status(job_id)
-  return res
+# status="processing", "needs_correction", "failed", "success"
+@router.get("/receipt/jobs/{status}")
+async def get_job_ids_by_status(status: JobStatus):
+    try:
+        job_ids: list[str] = await view_job_ids_by_status(status)
+        return job_ids
+    except Exception as e:
+        logging.error(f"RedisからのID取得に失敗しました: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="インデックスの取得に失敗しました"
+        )
 
+@router.get("/receipt/jobs/detail/{job_id}")
+async def get_job_detail(job_id: str):
+    res = await view_receipt_status(job_id)
+    if res == None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"指定されたジョブID '{job_id}' のデータが見つかりませんでした。"
+        )
+    return res
