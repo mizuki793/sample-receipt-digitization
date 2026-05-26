@@ -2,9 +2,11 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 import uuid
 import logging
 from app.services import init_receipt_pipeline, analysis_task, view_receipt_status, view_job_ids_by_status, lock_receipt_job, fix_receipt_job_data
+from app.services.receipt_search import ReceiptSearchService
 from app.core.validate import ImageValidator
 from app.schemas.receipt import ReceiptFixRequest
 from app.schemas.job import JobStatus
+from app.schemas.search import SearchRequest, SearchStatsResponse
 
 router = APIRouter(
     prefix="/api/v1",
@@ -90,4 +92,16 @@ async def update_job_detail(job_id: str, request_body: ReceiptFixRequest):
         raise HTTPException(
             status_code=500,
             detail="ジョブデータの修正中に予期せぬエラーが発生しました。"
+        )
+
+@router.post("receipts/search")
+async def search_receipt_stats(payload: SearchRequest):
+    try:
+        stats = await ReceiptSearchService.search_item_stats(payload.query)
+        return stats
+    except Exception as e:
+        # 予期せぬエラーのハンドリング
+        raise HTTPException(
+            status_code=500,
+            detail=f"統計情報の集計中にエラーが発生しました: {str(e)}"
         )
