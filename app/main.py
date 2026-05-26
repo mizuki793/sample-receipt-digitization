@@ -5,7 +5,6 @@ from app.infrastructure.redis import init_redis_pool, close_redis_pool
 from app.infrastructure.duckdb import init_database
 from app.infrastructure.mongodb import init_mongo_client, close_mongo_client
 from app.routers.receipt_router import router as receipt_router
-from app.infrastructure.mongodb import init_mongo_client
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

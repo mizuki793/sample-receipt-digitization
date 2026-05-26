@@ -32,7 +32,6 @@ async def _save_raw_receipt_image(file_object: UploadFile, job_id:str) -> str:
 
 async def view_receipt_status(job_id: str):
     job_status = await fetch_job_status(job_id)
-    print(job_status)
     return job_status
 
 async def view_job_ids_by_status(status: str) -> list[str]:

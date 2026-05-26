@@ -126,18 +126,15 @@ async def _process_ocr_analysis(raw_ocr_text) -> str:
 async def fetch_job_status(job_id:str)-> dict | None: 
     job_status_data = await MongoJobRepository.get_job(job_id)
     
-    if job_status_data == None:
+    if job_status_data is None:
         logging.info(f"DBに存在しないジョブです: {job_id}")
         return None
     
     status = job_status_data.get("status")
     logging.debug(f"Job {job_id} status: {status}")
-    
-    if status == "success":
+
+    if status == "success" or status == "processing" or status == "failed":
         # success時はyyyy/mm/ddの場所に配置されているためpathをどこかに記入し取得する必要がある(下記では取得できないが、補正用のデータ取得の範囲では着手しない)
-        return job_status_data
-    if status == "processing":
-        logging.info("ファイルの処理中です")
         return job_status_data
     if status == "needs_correction":
         file_path = os.path.join(f"{settings.LOCAL_DATA_SET_BASE_DIR}/tmp", f"{job_id}.json") 
@@ -151,9 +148,6 @@ async def fetch_job_status(job_id:str)-> dict | None:
         except Exception as e:
             logging.error(f"ファイル {file_path} の読み込みに失敗しました: {str(e)}")
             return None
-    if status == "failed":
-        logging.info(f"ジョブ {job_id} は失敗しました。")
-        return job_status_data
     else:
-        logging.info(f"ジョブ {job_id}はDBに存在しないステータス等の対応")
-        return job_status_data
+        logging.warning(f"ジョブ {job_id} に未知のステータス '{status}' が見つかりました。")
+        return None

@@ -47,7 +47,7 @@ class MongoJobRepository:
             
         if not raw_result:
             return None
-            
+        # fix: リポジトリ層で _id フィールドを削除する処理は、責務の分離の観点からプレゼンテーション層やサービス層で行うことを検討
         if "_id" in raw_result:
             del raw_result["_id"]
             

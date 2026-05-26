@@ -1,9 +1,15 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from fastapi.responses import JSONResponse
+from enum import Enum
 import uuid
 import logging
 from app.services import init_receipt_pipeline, analysis_task, view_receipt_status, view_job_ids_by_status
 from app.core.validate import ImageValidator
+
+class JobStatus(str, Enum):
+    processing = "processing"
+    needs_correction = "needs_correction"
+    failed = "failed"
+    success = "success"
 
 router = APIRouter(
     prefix="/api/v1",
@@ -26,7 +32,7 @@ async def analyses_receipts(
 
 # status="processing", "needs_correction", "failed", "success"
 @router.get("/receipt/jobs/{status}")
-async def get_job_ids_by_status(status: str):
+async def get_job_ids_by_status(status: JobStatus):
     try:
         job_ids: list[str] = await view_job_ids_by_status(status)
         return job_ids
