@@ -1,7 +1,6 @@
 # BackgroundTasks で動く、重い解析処理やOpenAI連携ロジック
 from pathlib import Path
 import logging
-import os
 import aiofiles
 import json
 from fastapi.concurrency import run_in_threadpool
@@ -137,7 +136,7 @@ async def fetch_job_status(job_id:str)-> dict | None:
         # success時はyyyy/mm/ddの場所に配置されているためpathをどこかに記入し取得する必要がある(下記では取得できないが、補正用のデータ取得の範囲では着手しない)
         return job_status_data
     if status == "needs_correction":
-        file_path = os.path.join(f"{settings.LOCAL_DATA_SET_BASE_DIR}/tmp", f"{job_id}.json") 
+        file_path = Path(settings.LOCAL_DATA_SET_BASE_DIR) / "tmp" / f"{job_id}.json"
         if not await aiofiles.os.path.exists(file_path):
             logging.warning(f"ジョブ {job_id} の補正ファイルが見つかりません: {file_path}")
             return None

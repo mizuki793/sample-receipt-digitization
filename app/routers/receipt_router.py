@@ -49,6 +49,6 @@ async def get_job_detail(job_id: str):
     if res == None:
         raise HTTPException(
             status_code=404,
-            detail="ファイルが存在しない、もしくは読み込み失敗"
+            detail=f"指定されたジョブID '{job_id}' のデータが見つかりませんでした。"
         )
     return res
