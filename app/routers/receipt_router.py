@@ -72,6 +72,7 @@ async def lock_job_status(job_id: str):
             status_code=500,
             detail="ジョブのロック処理中に予期せぬエラーが発生しました。"
         )
+
 @router.post("/receipt/jobs/{job_id}/fix")
 async def update_job_detail(job_id: str, request_body: ReceiptFixRequest): 
     try:

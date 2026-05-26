@@ -1,4 +1,5 @@
 import duckdb
+import logging
 from pathlib import Path
 from fastapi.concurrency import run_in_threadpool
 from app.core.config import settings
@@ -10,7 +11,7 @@ class ReceiptSearchService:
         """
         DuckDBを使用して、JSONファイル群から部分一致で最安値・店舗別統計・時間帯統計を抽出する
         """
-        # 💡 同期処理であるDuckDBのクエリ実行をスレッドプールに逃がして非同期化
+        # 同期処理であるDuckDBのクエリ実行をスレッドプールに逃がして非同期化
         return await run_in_threadpool(cls._execute_duckdb_query, query_word)
 
     @classmethod
@@ -88,7 +89,8 @@ class ReceiptSearchService:
                 time_zone_stats=time_zone_stats
             )
         except duckdb.IOException as e:
-            print(f"DuckDB スキャン対象にファイルが存在しません: {e}")
+            
+            logging.error(f"DuckDB スキャン対象にファイルが存在しません: {e}")
             return SearchStatsResponse(
                 query=query_word,
                 store_stats=[],
