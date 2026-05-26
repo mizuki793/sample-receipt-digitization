@@ -22,16 +22,15 @@ class ReceiptSearchService:
         
         try:
             # 1. 共通のデータ展開処理（WITH句）
-            # transaction_date から購入時間（Hour）を抽出しておきます
             setup_query = f"""
                 CREATE OR REPLACE TEMP TABLE flattened_receipts AS
                 SELECT 
                     corrected_json.store_name AS store_name,
-                    epoch(CAST(corrected_json.transaction_date AS TIMESTAMP)) AS ts,
                     hour(CAST(corrected_json.transaction_date AS TIMESTAMP)) AS item_hour,
+                    minute(CAST(corrected_json.transaction_date AS TIMESTAMP)) AS item_minute,
                     UNNEST(corrected_json.items) AS item
                 FROM read_json_auto('{search_pattern}', hive_partitioning=1)
-                WHERE corrected_json.needs_correction IS NOT NULL;
+                WHERE corrected_json.needs_correction = false;
             """
             con.execute(setup_query)
             
@@ -51,21 +50,14 @@ class ReceiptSearchService:
             store_rows = con.execute(store_query, [f"%{query_word}%"]).fetchall()
             
             # 3. 購入時間帯の偏りの集計
-            time_query = f"""
+            time_query = """
                 SELECT 
                     LPAD(CAST(item_hour AS VARCHAR), 2, '0') || ':' || 
                     LPAD(CAST((item_minute // 30) * 30 AS VARCHAR), 2, '0') || '-' ||
                     LPAD(CAST(CASE WHEN item_minute < 30 THEN item_hour ELSE item_hour + 1 END AS VARCHAR), 2, '0') || ':' ||
                     CASE WHEN item_minute < 30 THEN '30' ELSE '00' END AS time_zone,                    
                     CAST(COUNT(*) AS INTEGER) AS count
-                FROM (
-                    SELECT 
-                        hour(CAST(corrected_json.transaction_date AS TIMESTAMP)) AS item_hour,
-                        minute(CAST(corrected_json.transaction_date AS TIMESTAMP)) AS item_minute,
-                        UNNEST(corrected_json.items) AS item
-                    FROM read_json_auto('{search_pattern}', hive_partitioning=1)
-                    WHERE corrected_json.needs_correction IS NOT NULL
-                )
+                FROM flattened_receipts
                 WHERE item.item_name LIKE ?
                 GROUP BY time_zone
                 ORDER BY 

@@ -104,5 +104,5 @@ async def search_receipt_stats(payload: SearchRequest):
         # 予期せぬエラーのハンドリング
         raise HTTPException(
             status_code=500,
-            detail=f"統計情報の集計中にエラーが発生しました: {str(e)}"
+            detail="統計情報の集計中に予期せぬエラーが発生しました。"
         )
