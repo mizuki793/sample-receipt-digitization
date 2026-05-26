@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 import aiofiles
 from pathlib import Path
 import logging
@@ -30,14 +31,14 @@ class LocalStorageClient():
 
         return str(target_file_path)
     
-    async def del_object_file(self, file_path: str, file_name: str) -> str:
+    async def del_object_file(self, file_path: str, file_name: str) -> Path:
         target_file_path = self.base_dir / file_path / file_name
         try:
             await aiofiles.os.remove(target_file_path)
             return target_file_path
         except FileNotFoundError:
             logging.error(f"対象のファイルが存在しません:{target_file_path}")
-            return f"対象のファイルが存在しません:{target_file_path}"
+            raise FileNotFoundError(f"ファイルが見つかりません: {target_file_path}")
         except Exception as e:
             logging.error(f"予期せぬエラーが発生:{e}")
-            return f"予期せぬエラーが発生:{e}"
+            raise IOError(f"ファイルの削除に失敗しました: {target_file_path}, エラー: {e}")

@@ -29,7 +29,7 @@ async def analysis_task(job_id: str, file_path: Path):
         )
     except Exception as e:
         await MongoJobRepository.update_job_data(job_id, {
-            "status": "failed",
+            "status": JobStatus.FAILED.value, 
             "result": {"error": f"AI解析処理が失敗しました: {str(e)}"}
         })
 
@@ -39,7 +39,7 @@ async def analysis_task(job_id: str, file_path: Path):
     validated_data = await _validate_and_result(result_dict)
     if not validated_data:
         await MongoJobRepository.update_job_data(job_id, {
-            "status": "failed",
+            "status": JobStatus.FAILED.value, 
             "result": {"error": "AIの出力がスキーマと一致しませんでした"}
         })  
         return
@@ -60,12 +60,12 @@ async def analysis_task(job_id: str, file_path: Path):
                 validated_data=validated_data
             )
             await MongoJobRepository.update_job_data(job_id, {
-                "status": "success"
+                "status": JobStatus.SUCCESS.value
             })
     except Exception as e:
         logging.error(f"解析完了後のデータハンドリングに失敗しました: {str(e)}")
         await MongoJobRepository.update_job_data(job_id,{
-            "status": "failed",
+            "status": JobStatus.FAILED.value, 
             "result": {"error": f"解析完了後のデータハンドリングに失敗しました: {str(e)}"}
         })
 
@@ -129,38 +129,45 @@ async def lock_receipt_job(job_id)-> str | None:
     
     status = job_status_data.get("status")
     
-    if status in [JobStatus.SUCCESS.value, JobStatus.NEEDS_CORRECTION.value, JobStatus.FAILED.value]:
-        await MongoJobRepository.update_job_data(job_id, {
-            "status": JobStatus.PROCESSING.value
-        })
-        return f"locked:{job_id}"
-    elif status == JobStatus.PROCESSING.value:
-        return f"lock済みのjob_id:{job_id}"
+    if status == JobStatus.PROCESSING.value:
+        return {"job_id": job_id, "status": JobStatus.PROCESSING.value, "message": "このジョブは既にロックされています。"}
+    elif status in [JobStatus.SUCCESS.value, JobStatus.NEEDS_CORRECTION.value, JobStatus.FAILED.value]:
+        updated = await MongoJobRepository.update_job_status_atomically(
+            job_id, 
+            JobStatus(status),
+            JobStatus.PROCESSING
+        )
+        if updated:
+            return {"job_id": job_id, "status": JobStatus.PROCESSING.value, "message": "ジョブが正常にロックされました。"}
+        else:
+            # 更新に失敗した場合、別のプロセスが既に状態を変更した可能性がある
+            logging.warning(f"ジョブ {job_id} のロック中に競合が発生しました。現在のステータス: {status}")
+            # クライアントにはエラーを返す
+            raise ValueError("ジョブのロックに失敗しました。競合が発生した可能性があります。")
     else:
         logging.warning(f"ジョブ {job_id} に予期しないステータス '{status}' が見つかりました。")
         raise ValueError(f"無効なジョブステータス: {status}")
 
-async def fix_receipt_job_data(job_id: str, raw_ocr_text: str, fixed_data: dict)-> str | None:
+async def fix_receipt_job_data(job_id: str, raw_ocr_text: str, fixed_data: ReceiptAnalysisResponse)-> str | None:
     logging.info(f"レシートデータの修正:{job_id}")
     job_status_data = await MongoJobRepository.get_job(job_id)
 
     if job_status_data is None:
         logging.info(f"DBに存在しないジョブです: {job_id}")
-        return f"DBに存在しないジョブです: {job_id}"
+        return None 
 
     status = job_status_data.get("status")
 
     if status != JobStatus.PROCESSING.value:
-        return f"処理フラグをされていないjob_idのため編集不可:{job_id}"
-    if status == JobStatus.PROCESSING.value:
-        await ReceiptStagingService.store_verified_receipt(
-            job_id=job_id,
-            raw_ocr_text=raw_ocr_text,
-            validated_data=fixed_data
-        )
-        file_name = f"{job_id}.json"
-        await ReceiptStagingService.delete_receipt_file(file_name=file_name, file_path="tmp")
-        await MongoJobRepository.update_job_data(job_id, {
-            "status": JobStatus.SUCCESS.value
-        })
-        return "success"
+        return {"job_id": job_id, "status": status, "message": f"処理フラグがされていないjob_idのため編集不可: {job_id}"}
+    await ReceiptStagingService.store_verified_receipt(
+        job_id=job_id,
+        raw_ocr_text=raw_ocr_text,
+        validated_data=fixed_data
+    )
+    file_name = f"{job_id}.json"
+    await ReceiptStagingService.delete_receipt_file(file_name=file_name, file_path="tmp")
+    await MongoJobRepository.update_job_data(job_id, {
+        "status": JobStatus.SUCCESS.value
+    })
+    return {"job_id": job_id, "status": JobStatus.SUCCESS.value, "message": "レシートデータが正常に修正されました。"}

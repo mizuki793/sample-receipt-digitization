@@ -36,6 +36,22 @@ class MongoJobRepository:
         await run_in_threadpool(_execute)
 
     @classmethod
+    async def update_job_status_atomically(cls, job_id: str, old_status: JobStatus, new_status: JobStatus) -> bool:
+        """
+        ジョブステータスをアトミックに更新します。
+        現在のステータスが `old_status` と一致する場合のみ、`new_status` に更新します。
+        """
+        def _execute():
+            db = mongo_infra.mongo_client["receipt_db"]
+            collection = db["jobs"]
+            result = collection.update_one(
+                {"job_id": job_id, "status": old_status.value},
+                {"$set": {"status": new_status.value, "updated_at": datetime.now(timezone.utc)}}
+            )
+            return result.modified_count > 0
+        return await run_in_threadpool(_execute)
+
+    @classmethod
     async def get_job(cls, job_id: str) -> dict | None:
         """指定されたjob_idのジョブデータを取得（MongoDB永続層）"""
         def _execute():

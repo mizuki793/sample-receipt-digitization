@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from pathlib import Path
 from app.core.config import settings
 from app.services.storage.local_client import LocalStorageClient
 from app.services.storage.s3_client import S3StorageClient
@@ -13,7 +14,7 @@ class BaseStorageClient(ABC):
         pass
 
     @abstractmethod
-    async def del_object_file(self, file_path: str, file_name: str) -> str:
+    async def del_object_file(self, file_path: str, file_name: str) -> Path | str: # 戻り値の型も修正
         pass
 
 def get_storage_client() -> BaseStorageClient: 

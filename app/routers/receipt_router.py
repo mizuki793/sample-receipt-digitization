@@ -49,15 +49,45 @@ async def get_job_detail(job_id: str):
 
 @router.post("/receipt/jobs/{job_id}/lock")
 async def lock_job_status(job_id: str):
-    res = await lock_receipt_job(job_id)
-    if res == None:
+    try:
+        res = await lock_receipt_job(job_id)
+        if res == None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"指定されたジョブID '{job_id}' のデータが見つかりませんでした。"
+            )
+        if "message" in res and "ロックに失敗しました" in res["message"]:
+            raise HTTPException(
+                status_code=409,
+                detail=res["message"]
+            )        
+        return res
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except Exception as e:
+        logging.error(f"ジョブのロック処理に失敗しました: {str(e)}")
         raise HTTPException(
-            status_code=404,
-            detail=f"指定されたジョブID '{job_id}' のデータが見つかりませんでした。"
+            status_code=500,
+            detail="ジョブのロック処理中に予期せぬエラーが発生しました。"
         )
-    return res
-
 @router.post("/receipt/jobs/{job_id}/fix")
 async def update_job_detail(job_id: str, request_body: ReceiptFixRequest): 
-    res = await fix_receipt_job_data(job_id, request_body.raw_ocr_text, request_body.fixed_data)
-    return res
+    try:
+        res = await fix_receipt_job_data(job_id, request_body.raw_ocr_text, request_body.fixed_data)
+        if res is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"指定されたジョブID '{job_id}' のデータが見つかりませんでした。"
+            )
+        if "message" in res and "編集不可" in res["message"]:
+            raise HTTPException(
+                status_code=400,
+                detail=res["message"]
+            )
+        return res
+    except Exception as e:
+        logging.error(f"ジョブデータの修正に失敗しました: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="ジョブデータの修正中に予期せぬエラーが発生しました。"
+        )
