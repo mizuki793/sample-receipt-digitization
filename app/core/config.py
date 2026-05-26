@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
+    MONGO_URL: str ="mongodb://root:example@localhost:27017"
     GEMINI_API_KEY: str = "mock-key-for-local-testing"
     LLM_MODEL_NAME: str ="gemini/gemini-2.5-flash"
     DUCKDB_PATH: str = "/app/data/ocr_few_shots.duckdb"

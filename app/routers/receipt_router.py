@@ -1,6 +1,8 @@
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import JSONResponse
 import uuid
-from app.services import init_receipt_pipeline, analysis_task, view_receipt_status
+import logging
+from app.services import init_receipt_pipeline, analysis_task, view_receipt_status, view_job_ids_by_status
 from app.core.validate import ImageValidator
 
 router = APIRouter(
@@ -22,8 +24,25 @@ async def analyses_receipts(
     background_tasks.add_task(analysis_task, job_id, saved_file_path)
     return { "job_id": job_id }
 
-@router.get("/receipt/jobs/status/{job_id}")
-async def view_status_receipt(job_id: str):
-  res = await view_receipt_status(job_id)
-  return res
+# status="processing", "needs_correction", "failed", "success"
+@router.get("/receipt/jobs/{status}")
+async def view_status_receipt_list(status: str):
+    try:
+        job_ids: list[str] = await view_job_ids_by_status(status)
+        return job_ids
+    except Exception as e:
+        logging.error(f"RedisからのID取得に失敗しました: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="インデックスの取得に失敗しました"
+        )
 
+@router.post("/receipt/jobs/detail/{job_id}")
+async def view_status_receipt(job_id: str):
+    res = await view_receipt_status(job_id)
+    if res == None:
+        raise HTTPException(
+            status_code=404,
+            detail="ファイルが存在しない、もしくは読み込み失敗"
+        )
+    return JSONResponse(status_code=200, content=res)

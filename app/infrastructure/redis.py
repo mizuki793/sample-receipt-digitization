@@ -49,5 +49,4 @@ async def remove_from_set(client: aioredis.Redis, key: str, value: str) -> int:
 
 async def get_set_members(client: aioredis.Redis, key: str) -> list[str]:
     """指定したSetの全要素を取得する（SMEMBERS）"""
-    # decode_responses=True がプール初期化時に設定されているため、文字列のリストが返ります
     return await client.smembers(key)

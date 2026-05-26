@@ -7,7 +7,8 @@ import os
 from typing import Any
 from fastapi import UploadFile
 from app.services.receipt_service import fetch_job_status
-from app.repositories.job import JobRepository
+from app.repositories.job_redis import JobRepository
+from app.repositories.receipt_tmp_data import ReceiptTmpDataRepository
 from app.core.config import settings
 from app.services.storage.factory import get_storage_client
 
@@ -30,5 +31,10 @@ async def _save_raw_receipt_image(file_object: UploadFile, job_id:str) -> str:
     return str(saved_file_path)
 
 async def view_receipt_status(job_id: str):
-	job_status = await fetch_job_status(job_id)
-	return job_status
+    job_status = await fetch_job_status(job_id)
+    print(job_status)
+    return job_status
+
+async def view_job_ids_by_status(status: str) -> list[str]:
+    list = await ReceiptTmpDataRepository.get_job_ids_by_status(status)
+    return list
