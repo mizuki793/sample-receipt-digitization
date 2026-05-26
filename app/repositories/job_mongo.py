@@ -1,10 +1,11 @@
-from typing import Any, Dict
+from typing import Any, Dict, Literal, List
 from datetime import datetime, timezone
 from fastapi.concurrency import run_in_threadpool
 from app.infrastructure import mongodb as mongo_infra
 
-class MongoJobRepository:
-    
+ReceiptStatus = Literal["processing", "needs_correction", "failed", "success"]
+
+class MongoJobRepository:    
     @classmethod
     async def create_job(cls, job_id: str, status: str) -> None:
         """新しいジョブを初期ステータスで作成（MongoDB永続層）"""
@@ -47,8 +48,24 @@ class MongoJobRepository:
             
         if not raw_result:
             return None
-        # fix: リポジトリ層で _id フィールドを削除する処理は、責務の分離の観点からプレゼンテーション層やサービス層で行うことを検討
+        # @fix: リポジトリ層で _id フィールドを削除する処理は、責務の分離の観点からプレゼンテーション層やサービス層で行うことを検討
         if "_id" in raw_result:
             del raw_result["_id"]
             
         return raw_result
+
+    @classmethod
+    async def get_job_ids_by_status(cls, status: ReceiptStatus) -> List[str]:
+        """一覧取得API用：指定ステータスを持つ全 job_id をリストで取得"""
+        def _execute():
+            db = mongo_infra.mongo_client["receipt_db"]
+            collection = db["jobs"]
+            
+            # statusが一致するドキュメントの job_id だけを高速スキャン
+            cursor = collection.find(
+                {"status": status},
+                {"job_id": 1, "_id": 0}
+            )
+            return [doc["job_id"] for doc in cursor if "job_id" in doc]
+            
+        return await run_in_threadpool(_execute)

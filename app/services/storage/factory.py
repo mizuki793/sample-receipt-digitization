@@ -12,6 +12,10 @@ class BaseStorageClient(ABC):
     async def put_object_file(self, partition_key: str, file_name: str, data: bytes) -> str:
         pass
 
+    @abstractmethod
+    async def del_object_file(self, file_path: str, file_name: str) -> str:
+        pass
+
 def get_storage_client() -> BaseStorageClient: 
     if settings.STORAGE_TYPE == "S3":
         return S3StorageClient()

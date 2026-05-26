@@ -1,5 +1,4 @@
 import os
-import redis.asyncio as aioredis
 from app.core.config import settings
 import logging
 from app.schemas.receipt import ReceiptTmpStorageData, ReceiptAnalysisResponse,ReceiptStorageData
@@ -16,8 +15,7 @@ class ReceiptStagingService:
     ) -> str:
         
         """
-        金額不整合などで手動補正が必要なデータを、アプリ内ストレージ（ファイル）に保存し、
-        Redisのneeds_correctionインデックスセットにIDを追加する。
+        金額不整合などで手動補正が必要なデータを、アプリ内ストレージ（ファイル）に保存
         """
         storage_client = get_storage_client()
 
@@ -41,6 +39,7 @@ class ReceiptStagingService:
         job_id: str,
         raw_ocr_text: str, 
         validated_data: ReceiptAnalysisResponse
+        #@fix successを人の手で修正したくなった場合の考慮がない
     ) -> str:
         """
         検証・補正が完了した成功データを、将来のDuckDBパースや
@@ -75,3 +74,14 @@ class ReceiptStagingService:
         except Exception as e:
             logging.error(f"フィードバックデータの保存に失敗しました (job_id: {job_id}): {str(e)}")
             raise e
+    
+    @staticmethod
+    async def delete_receipt_file(
+        file_name: str,
+        file_path: str
+    ):
+        """
+        処理済みになった場合アプリ内ストレージ（ファイル）を削除
+        """
+        storage_client = get_storage_client()
+        res = storage_client.del_object_file(file_path=file_path, file_name=file_name)

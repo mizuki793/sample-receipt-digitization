@@ -2,7 +2,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from enum import Enum
 import uuid
 import logging
-from app.services import init_receipt_pipeline, analysis_task, view_receipt_status, view_job_ids_by_status
+from app.services import init_receipt_pipeline, analysis_task, view_receipt_status, view_job_ids_by_status, locked_receipt_status, fixed_receipt_data
 from app.core.validate import ImageValidator
 
 class JobStatus(str, Enum):
@@ -37,7 +37,7 @@ async def get_job_ids_by_status(status: JobStatus):
         job_ids: list[str] = await view_job_ids_by_status(status)
         return job_ids
     except Exception as e:
-        logging.error(f"RedisからのID取得に失敗しました: {str(e)}")
+        logging.error(f"ID取得に失敗しました: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail="インデックスの取得に失敗しました"
@@ -51,4 +51,19 @@ async def get_job_detail(job_id: str):
             status_code=404,
             detail=f"指定されたジョブID '{job_id}' のデータが見つかりませんでした。"
         )
+    return res
+
+@router.post("/receipt/jobs/{job_id}/lock")
+async def lock_job_status(job_id: str):
+    res = await locked_receipt_status(job_id)
+    if res == None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"指定されたジョブID '{job_id}' のデータが見つかりませんでした。"
+        )
+    return res
+
+@router.post("/receipt/jobs/{job_id}/fix")
+async def update_job_detail(job_id: str, raw_ocr_txt: str, fix_json:str):
+    res = await fixed_receipt_data(job_id, raw_ocr_txt, fix_json)
     return res

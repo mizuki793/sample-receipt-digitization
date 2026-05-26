@@ -16,3 +16,6 @@ class S3StorageClient():
     async def put_object_file(self, partition_key: str, file_name: str, data: bytes) -> str:
          # S3に入れることは現時点では考えていないため、枠だけを作成
         return "s3//"
+
+    async def del_object_file(self, file_path: str, file_name: str) -> str:
+        return "s3//"

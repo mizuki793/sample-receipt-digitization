@@ -5,9 +5,7 @@ import aiofiles
 import json
 from fastapi.concurrency import run_in_threadpool
 from app.core.config import settings
-from app.repositories.job_redis import JobRepository
 from app.repositories.job_mongo import MongoJobRepository
-from app.repositories.receipt_tmp_data import ReceiptTmpDataRepository
 from app.repositories.ocr_few_shot_repository import OcrFewShotRepository
 from app.schemas.receipt import ReceiptAnalysisResponse
 from app.services.call_llm import call_llm_json
@@ -17,9 +15,6 @@ from app.services.receipt_staging_service import ReceiptStagingService
 
 # todo:バックグラウンドで実行される非同期関数
 async def analysis_task(job_id: str, file_path: Path):
-    await JobRepository.update_job_data(job_id, {"status": "PROCESSING"})
-    await ReceiptTmpDataRepository.add_job_id_to_status_set("processing",job_id)
-    await MongoJobRepository.update_job_data(job_id,{"status":"processing"})
     raw_ocr_text = await _convert_img_to_raw_text(file_path)
     receipt_prompt = await _process_ocr_analysis(raw_ocr_text)
     MODEL_NAME = settings.LLM_MODEL_NAME
@@ -32,38 +27,21 @@ async def analysis_task(job_id: str, file_path: Path):
             backoff_seconds=10
         )
     except Exception as e:
-        await ReceiptTmpDataRepository.add_job_id_to_status_set("failed",job_id)
-
         await MongoJobRepository.update_job_data(job_id, {
             "status": "failed",
             "result": {"error": f"AI解析処理が失敗しました: {str(e)}"}
         })
 
         logging.error(f"AI解析処理が失敗しました: {str(e)}")
-        
-        await JobRepository.update_job_data(job_id, {
-            "status": "FAILED",
-            "result": {"error": f"AI解析処理が失敗しました: {str(e)}"}
-        })
-
 
         return
     validated_data = await _validate_and_result(result_dict)
     if not validated_data:
-        await ReceiptTmpDataRepository.add_job_id_to_status_set("failed", job_id)
-        
         await MongoJobRepository.update_job_data(job_id, {
             "status": "failed",
             "result": {"error": "AIの出力がスキーマと一致しませんでした"}
-        })
-
-        await JobRepository.update_job_data(job_id, {
-            "status": "FAILED",
-            "result": {"error": "AIの出力がスキーマと一致しませんでした"}
-        })
-        
+        })  
         return
-    serialized_result_dict = validated_data.model_dump(mode="json")
     try:
         if validated_data.needs_correction:
             await ReceiptStagingService.stage_unverified_receipt(
@@ -71,7 +49,6 @@ async def analysis_task(job_id: str, file_path: Path):
                 raw_ocr_text=raw_ocr_text,
                 validated_data=validated_data
             )
-            await ReceiptTmpDataRepository.add_job_id_to_status_set("needs_correction",job_id)
             await MongoJobRepository.update_job_data(job_id, {
                 "status": "needs_correction"
             })
@@ -84,22 +61,12 @@ async def analysis_task(job_id: str, file_path: Path):
             await MongoJobRepository.update_job_data(job_id, {
                 "status": "success"
             })
-        await JobRepository.update_job_data(job_id, {
-            "status": "SUCCESS",
-            "result": serialized_result_dict
-        })
     except Exception as e:
         logging.error(f"解析完了後のデータハンドリングに失敗しました: {str(e)}")
-        await JobRepository.update_job_data(job_id,{
-            "status": "FAILED",
-            "result": {"error": f"解析完了後のデータハンドリングに失敗しました: {str(e)}"}
-        })
         await MongoJobRepository.update_job_data(job_id,{
             "status": "failed",
             "result": {"error": f"解析完了後のデータハンドリングに失敗しました: {str(e)}"}
         })
-    finally:
-        await ReceiptTmpDataRepository.remove_job_id_from_status_set("processing",job_id)
 
 
 async def _validate_and_result(result_dict: dict)-> ReceiptAnalysisResponse | None:
@@ -137,7 +104,7 @@ async def fetch_job_status(job_id:str)-> dict | None:
         return job_status_data
     if status == "needs_correction":
         file_path = Path(settings.LOCAL_DATA_SET_BASE_DIR) / "tmp" / f"{job_id}.json"
-        if not await aiofiles.os.path.exists(file_path):
+        if not file_path.exists():
             logging.warning(f"ジョブ {job_id} の補正ファイルが見つかりません: {file_path}")
             return None
         try:
@@ -150,3 +117,49 @@ async def fetch_job_status(job_id:str)-> dict | None:
     else:
         logging.warning(f"ジョブ {job_id} に未知のステータス '{status}' が見つかりました。")
         return None
+
+async def locked_receipt_status(job_id)-> str | None: 
+    logging.info(f"ジョブの編集ロック処理:{job_id}")
+    job_status_data = await MongoJobRepository.get_job(job_id)
+    
+    if job_status_data is None:
+        logging.info(f"DBに存在しないジョブです: {job_id}")
+        return None
+    
+    status = job_status_data.get("status")
+    
+    if status == "success" or status == "needs_correction" or status == "failed":
+        # fix:redisでの処理はmongoDBに統一する
+        await MongoJobRepository.update_job_data(job_id, {
+            "status": "processing"
+        })
+        return f"locked:{job_id}"
+    else:
+        return f"lock済みのjob_id:{job_id}"
+
+async def fixed_receipt_data(job_id: str, raw_ocr_text: str, fix_json:str) -> str | None:
+    logging.info(f"レシートデータの修正:{job_id}")
+    job_status_data = await MongoJobRepository.get_job(job_id)
+
+    if job_status_data is None:
+        logging.info(f"DBに存在しないジョブです: {job_id}")
+        return f"DBに存在しないジョブです: {job_id}"
+
+    status = job_status_data.get("status")
+
+    if status != "processing":
+        return f"処理フラグをされていないjob_idのため編集不可:{job_id}"
+    if status == "processing":
+        parsed_json = json.loads(fix_json)
+        validated_data = await _validate_and_result(parsed_json)
+        await ReceiptStagingService.store_verified_receipt(
+            job_id=job_id,
+            raw_ocr_text=raw_ocr_text,
+            validated_data=validated_data
+        )
+        file_name = f"{job_id}.json"
+        await ReceiptStagingService.delete_receipt_file(file_name=file_name, file_path="tmp")
+        await MongoJobRepository.update_job_data(job_id, {
+            "status": "success"
+        })
+        return "success"
