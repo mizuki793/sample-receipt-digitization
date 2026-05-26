@@ -21,7 +21,6 @@ async def analysis_task(job_id: str, file_path: Path):
     await JobRepository.update_job_data(job_id, {"status": "PROCESSING"})
     await ReceiptTmpDataRepository.add_job_id_to_status_set("processing",job_id)
     await MongoJobRepository.update_job_data(job_id,{"status":"processing"})
-    print(file_path)
     raw_ocr_text = await _convert_img_to_raw_text(file_path)
     receipt_prompt = await _process_ocr_analysis(raw_ocr_text)
     MODEL_NAME = settings.LLM_MODEL_NAME
@@ -33,7 +32,6 @@ async def analysis_task(job_id: str, file_path: Path):
             response_schema=ReceiptAnalysisResponse,
             backoff_seconds=10
         )
-        print(result_dict)
     except Exception as e:
         await ReceiptTmpDataRepository.add_job_id_to_status_set("failed",job_id)
 
@@ -118,7 +116,6 @@ async def _validate_and_result(result_dict: dict)-> ReceiptAnalysisResponse | No
 #画像の編集、画像の文字列読み込み
 async def _convert_img_to_raw_text(img_path) -> str:
     text = await run_in_threadpool(process_ocr_sync, img_path)
-    print(text)
     return text
 
 async def _process_ocr_analysis(raw_ocr_text) -> str:
@@ -126,19 +123,26 @@ async def _process_ocr_analysis(raw_ocr_text) -> str:
     dynamic_prompt = ReceiptPromptAssembler.build_few_shot_receipt_prompt(raw_ocr_text, few_shots)
     return dynamic_prompt
 
-async def fetch_job_status(job_id:str):
+async def fetch_job_status(job_id:str)-> dict | None: 
     job_status_data = await MongoJobRepository.get_job(job_id)
-    print(f"job_status_data->{job_status_data}")
+    
     if job_status_data == None:
+        logging.info(f"DBに存在しないジョブです: {job_id}")
         return None
+    
     status = job_status_data.get("status")
+    logging.debug(f"Job {job_id} status: {status}")
+    
+    if status == "success":
+        # success時はyyyy/mm/ddの場所に配置されているためpathをどこかに記入し取得する必要がある(下記では取得できないが、補正用のデータ取得の範囲では着手しない)
+        return job_status_data
     if status == "processing":
         logging.info("ファイルの処理中です")
-        return None
+        return job_status_data
     if status == "needs_correction":
         file_path = os.path.join(f"{settings.LOCAL_DATA_SET_BASE_DIR}/tmp", f"{job_id}.json") 
-        if not os.path.exists(file_path):
-            logging.warning(f"ファイルが見つかりません: {file_path}")
+        if not await aiofiles.os.path.exists(file_path):
+            logging.warning(f"ジョブ {job_id} の補正ファイルが見つかりません: {file_path}")
             return None
         try:
             async with aiofiles.open(file_path, mode="r", encoding="utf-8") as f:
@@ -148,8 +152,8 @@ async def fetch_job_status(job_id:str):
             logging.error(f"ファイル {file_path} の読み込みに失敗しました: {str(e)}")
             return None
     if status == "failed":
-        logging.info("errorのためファイルなし")
-        return None
+        logging.info(f"ジョブ {job_id} は失敗しました。")
+        return job_status_data
     else:
-        logging.info("DBに存在しないjob")
-        return None
+        logging.info(f"ジョブ {job_id}はDBに存在しないステータス等の対応")
+        return job_status_data

@@ -3,7 +3,7 @@ import redis.asyncio as aioredis
 from app.infrastructure import redis as redis_infra
 from app.infrastructure.redis import add_to_set, remove_from_set, get_set_members
 
-ReceiptStatus = Literal["processing", "needs_correction", "failed"]
+ReceiptStatus = Literal["processing", "needs_correction", "failed", "success"]
 class ReceiptTmpDataRepository:
     @classmethod
     async def add_job_id_to_status_set(cls, status:ReceiptStatus, job_id) -> None:

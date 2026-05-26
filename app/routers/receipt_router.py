@@ -26,7 +26,7 @@ async def analyses_receipts(
 
 # status="processing", "needs_correction", "failed", "success"
 @router.get("/receipt/jobs/{status}")
-async def view_status_receipt_list(status: str):
+async def get_job_ids_by_status(status: str):
     try:
         job_ids: list[str] = await view_job_ids_by_status(status)
         return job_ids
@@ -37,12 +37,12 @@ async def view_status_receipt_list(status: str):
             detail="インデックスの取得に失敗しました"
         )
 
-@router.post("/receipt/jobs/detail/{job_id}")
-async def view_status_receipt(job_id: str):
+@router.get("/receipt/jobs/detail/{job_id}")
+async def get_job_detail(job_id: str):
     res = await view_receipt_status(job_id)
     if res == None:
         raise HTTPException(
             status_code=404,
             detail="ファイルが存在しない、もしくは読み込み失敗"
         )
-    return JSONResponse(status_code=200, content=res)
+    return res
