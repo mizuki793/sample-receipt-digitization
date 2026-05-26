@@ -34,7 +34,7 @@ class LocalStorageClient():
         target_file_path = self.base_dir / file_path / file_name
         try:
             await aiofiles.os.remove(target_file_path)
-            return target_file_path
+            return str(target_file_path) 
         except FileNotFoundError:
             logging.error(f"対象のファイルが存在しません:{target_file_path}")
             raise FileNotFoundError(f"ファイルが見つかりません: {target_file_path}")
