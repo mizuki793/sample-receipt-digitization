@@ -15,3 +15,5 @@ data/receipt_images/
 data/tmp/
 data/archive/
 search_rag_service/chroma_data/
+**/__pycache__/
+*.duckdb
