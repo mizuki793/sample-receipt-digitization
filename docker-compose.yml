@@ -1,16 +1,34 @@
 services:
   web:
-    build: .
+    build:
+      context: ./receipt_service
+      dockerfile: Dockerfile
     container_name: receipt_fastapi_web
     ports:
       - "8000:8000"
     volumes:
-      - .:/app  # PC側のコード変更をコンテナにリアルタイム同期
-      - ./.env:/app/.env
+      - ./receipt_service:/app  # PC側のコード変更をコンテナにリアルタイム同期
     env_file:
       - .env
     depends_on:
       - mongodb
+
+  search-rag-service:
+    build:
+      context: ./search_rag_service
+      dockerfile: Dockerfile
+    container_name: search_rag_service
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./search_rag_service:/app
+    env_file:
+      - .env
+    deploy:
+      resources:
+        limits:
+          memory: 1gb
+    restart: always
 
 # メタデータ・ステータス管理用のNoSQL（MongoDB）
   mongodb:
