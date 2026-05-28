@@ -1,12 +1,17 @@
 from fastapi import FastAPI, HTTPException, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from app.services.chromadb_service import ChromaDBService
+from app.services.gemini_service import GeminiService
 
 app = FastAPI(title="Search RAG Service", version="1.0.0")
-chroma_service = ChromaDBService()
 
-# TODO:スキーマーに切り分けが必要
+# TODO:クラスのインスタンス化、可読性を高くしたい
+chroma_service = ChromaDBService()
+gemini_service = GeminiService()
+
+# TODO:スキーマーに切り分けが必要　- このサービスは一旦動くことを優先させる
 # --- リクエスト/レスポンススキーマ ---
 class EmbedRequest(BaseModel):
     item_name: str = Field(..., min_length=1, max_length=100)
@@ -23,6 +28,9 @@ class MatchedItem(BaseModel):
 class QueryResponse(BaseModel):
     query: str
     matches: List[MatchedItem]
+
+class ChatStreamRequest(BaseModel):
+    message: str
 
 # --- エンドポイント ---
 # TODO:routerに切り分けるべき
@@ -43,3 +51,18 @@ async def search_items(payload: SearchQueryRequest):
         return QueryResponse(query=payload.query, matches=matches)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+@app.post("/v1/chat/stream")
+async def chat_stream_endpoint(request: ChatStreamRequest):
+    """
+    ユーザーからのメッセージを受け取り、
+    Geminiのテキスト応答をリアルタイムにストリーミング配信するエンドポイント
+    """
+    if not request.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+    # StreamingResponseにジェネレータを渡し、メディアタイプを text/event-stream に指定します
+    return StreamingResponse(
+        gemini_service.generate_chat_stream(request.message),
+        media_type="text/event-stream"
+    )

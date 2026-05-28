@@ -1,5 +1,5 @@
 services:
-  web:
+  receipt_service:
     build:
       context: ./receipt_service
       dockerfile: Dockerfile
