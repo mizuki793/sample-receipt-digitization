@@ -1,5 +1,5 @@
 import os
-from typing import Iterator
+from typing import AsyncGenerator
 from google import genai
 
 class GeminiService:
@@ -11,7 +11,7 @@ class GeminiService:
         else:
             self.client = None
 
-    def generate_chat_stream(self, prompt: str) ->  Iterator[str]:
+    async def generate_chat_stream(self, prompt: str) ->  AsyncGenerator[str, None]:
         """
         Geminiからテキストストリーミングを取得し、
         SSE（Server-Sent Events）プロトコルに適した形式に整形して yield するジェネレータ
@@ -21,13 +21,13 @@ class GeminiService:
             return
 
         try:
-            # 非同期でGeminiのストリーミングモデルを呼び出し
-            response_stream = self.client.models.generate_content_stream(
+            # クライアントの .aio（AsyncIOの略）を経由して呼び出すことで、完全な非同期ストリームになる
+            response_stream = await self.client.aio.models.generate_content_stream(
                 model="models/gemini-2.5-flash",
                 contents=prompt
             )
 
-            for chunk in response_stream:
+            async for chunk in response_stream:
                 if chunk.text:
                     # SSEフォーマットに整形してフロントエンドへ流します
                     yield f"data: {chunk.text}\n\n"
