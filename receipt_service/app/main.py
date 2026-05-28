@@ -13,5 +13,10 @@ async def lifespan(app: FastAPI):
     yield
     close_mongo_client()
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    title="Receipt Service", 
+    version="1.0.0",
+    lifespan=lifespan
+)
+
 app.include_router(receipt_router)
