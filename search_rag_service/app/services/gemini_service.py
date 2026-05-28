@@ -1,5 +1,5 @@
 import os
-from typing import AsyncGenerator
+from typing import Iterator
 from google import genai
 
 class GeminiService:
@@ -11,7 +11,7 @@ class GeminiService:
         else:
             self.client = None
 
-    async def generate_chat_stream(self, prompt: str) -> AsyncGenerator[str, None]:
+    def generate_chat_stream(self, prompt: str) ->  Iterator[str]:
         """
         Geminiからテキストストリーミングを取得し、
         SSE（Server-Sent Events）プロトコルに適した形式に整形して yield するジェネレータ

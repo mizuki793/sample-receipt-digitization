@@ -14,7 +14,7 @@ async def lifespan(app: FastAPI):
     close_mongo_client()
 
 app = FastAPI(
-    title="Search RAG Service", 
+    title="Receipt Service", 
     version="1.0.0",
     lifespan=lifespan
 )
