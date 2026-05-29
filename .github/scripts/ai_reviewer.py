@@ -134,9 +134,11 @@ def call_api_with_retry(url, payload, headers, max_retries=3, backoff_factor=5):
             # 429, 503 や 500 系列のエラーならリトライする status_codeがない場合は500とする
             if status_code in [500, 502, 503, 504, 429] and attempt < max_retries - 1:
                 sleep_time = backoff_factor ** attempt
-                print(f"Gemini API 503検知。 {sleep_time}秒後にリトライします... (試行 {attempt + 1}/{max_retries})")
+                print(f"Gemini API (Status: {status_code})検知。 {sleep_time}秒後にリトライします... (試行 {attempt + 1}/{max_retries})")
                 time.sleep(sleep_time)
                 continue
+
+            print(f"APIリクエストが最終的に失敗しました。Status: {status_code}", file=sys.stderr)
             raise e
 
 if __name__ == "__main__":
