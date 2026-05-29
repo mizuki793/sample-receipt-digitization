@@ -30,6 +30,24 @@ services:
           memory: 1gb
     restart: always
 
+  chat-frontend:
+      build:
+        context: ./chat_frontend
+        dockerfile: Dockerfile
+      container_name: chat_frontend
+      ports:
+        - "8501:8501"  # ホスト側のポートはお好みに応じて調整してください
+      env_file:
+        - .env
+      deploy:
+        resources:
+          limits:
+            memory: 256mb
+      depends_on:
+        - search-rag-service
+      networks:
+        - default
+
 # メタデータ・ステータス管理用のNoSQL（MongoDB）
   mongodb:
     image: mongo:6.0
