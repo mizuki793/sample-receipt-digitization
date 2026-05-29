@@ -35,4 +35,4 @@ def calculate_duty_day_budget_db(duty_date: str) -> str:
     except Exception as e:
         # 通信エラーの場合も、開発中は挙動が見えるようにモック出力を添えます
         return f"当番日（{duty_date}）の現在の支出合計は2,450円、残り予算は2,550円です（通信エラー時バックアップ）。"
-    
+ 
