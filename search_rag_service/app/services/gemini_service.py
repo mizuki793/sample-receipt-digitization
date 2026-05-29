@@ -21,9 +21,11 @@ class GeminiService:
             return
 
         try:
+            model_name = os.getenv("LANGCHAIN_MODEL_NAME", "gemini-2.5-flash")
+
             # クライアントの .aio（AsyncIOの略）を経由して呼び出すことで、完全な非同期ストリームになる
             response_stream = await self.client.aio.models.generate_content_stream(
-                model="models/gemini-2.5-flash",
+                model=model_name,
                 contents=prompt
             )
 

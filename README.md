@@ -100,6 +100,11 @@
     【search-rag-service】(FastAPI / 新コンテナ)
       ├── 役割: 商品名のEmbedding（ベクトル化）、曖昧チャット、レコメンド最安値検索
       └── DB: Chroma (Vector DB)
+            ▲
+            │
+            │ (v1/chat/streamに対してPOSTを実施する)
+    【chat_frontend】(Streamlit / コンテナ)
+      ├── 役割: 価格に関するユーザーからの問い合わせを受ける受け口
     ```
 ---
 # メモ書き
