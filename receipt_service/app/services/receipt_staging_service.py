@@ -15,7 +15,7 @@ class ReceiptStagingService:
     ) -> str:
         
         """
-        金額不整合などで手動補正が必要なデータを、アプリ内ストレージ（ファイル）に保存
+        全てのデータを、アプリ内一時ストレージ（ファイル）に保存
         """
         storage_client = get_storage_client()
 

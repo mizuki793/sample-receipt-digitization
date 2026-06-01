@@ -7,7 +7,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./receipt_service:/app  # PC側のコード変更をコンテナにリアルタイム同期
+      - ./receipt_service:/app
     env_file:
       - .env
     depends_on:
@@ -36,7 +36,9 @@ services:
         dockerfile: Dockerfile
       container_name: chat_frontend
       ports:
-        - "8501:8501"  # ホスト側のポートはお好みに応じて調整してください
+        - "8501:8501"
+      volumes:
+      - ./chat_frontend:/app
       env_file:
         - .env
       deploy:
