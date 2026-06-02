@@ -10,7 +10,7 @@ from datasets import Dataset
 from ragas import evaluate
 from ragas.metrics import Faithfulness, ContextPrecision
 from ragas.llms import LangchainLLMWrapper
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.chat_models import init_chat_model
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 backend_root = os.path.abspath(os.path.join(current_dir, "..", ".."))
@@ -20,14 +20,20 @@ if backend_root not in sys.path:
 
 # パスが通った後に、同じコンテナ内の本物のサービス群をインポートします
 try:
-    from app.services.chromadb_service import ChromaDBService
-    from app.services.agent_service import ShoppingAgent
+    from services.chromadb_service import ChromaDBService
+    from services.agent_service import ShoppingAgent
     agent = ShoppingAgent()
     chroma_service = ChromaDBService()
 except ImportError as e:
     logging.error(f" インポートに失敗しました。現在の sys.path: {sys.path}")
     raise e
 
+model_name = os.getenv("LANGCHAIN_MODEL_NAME", "gemini-2.5-flash")
+model_provider = os.getenv("LANGCHAIN_MODEL_PROVIDER", "google_genai")
+chat_model = init_chat_model(
+    model=model_name,
+    model_provider=model_provider
+)
 
 async def get_rag_response_and_contexts_async(question: str):
     """
@@ -82,12 +88,6 @@ def main():
     logging.basicConfig(level=logging.INFO)
     logging.info("=== Ragas 評価スクリプト（インポートバグ回避版） ===")
 
-    api_key = os.getenv("GEMINI_API_KEY")
-    model_name = os.getenv("LANGCHAIN_MODEL_NAME", "gemini-2.5-flash")
-    if not api_key:
-        logging.error("Error: GEMINI_API_KEY が必要です。")
-        return
-
     # テスト用の表記揺れデータセット
     test_cases = [
         {"question": "タマゴはどこが安い？", "ground_truth": "Aスーパーの198円"},
@@ -128,11 +128,7 @@ def main():
     df = pd.DataFrame(evaluation_data)
     dataset = Dataset.from_pandas(df)
 
-    # 評価エンジン（Gemini）の初期化と実行
-    chat_model = ChatGoogleGenerativeAI(
-        model=model_name,
-        google_api_key=api_key
-    )
+    # 評価エンジンの初期化と実行
     evaluator_llm = LangchainLLMWrapper(chat_model)
 
     logging.info("Geminiによる定量評価（Ragas）を開始...")

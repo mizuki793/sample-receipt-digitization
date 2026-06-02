@@ -4,8 +4,8 @@ import json
 from pathlib import Path
 from datetime import datetime
 from unittest.mock import AsyncMock
-from app.schemas.receipt import ReceiptItem
-from app.services.receipt_service import analysis_task
+from schemas.receipt import ReceiptItem
+from services.receipt_service import analysis_task
 
 # 初期設定
 os.environ["GEMINI_API_KEY"] = "dummy"
@@ -51,14 +51,14 @@ async def test_analysis_task_success(mocker):
     ]
 
     mock_acompletion = mocker.patch(
-        "app.services.call_llm.acompletion",
+        "services.call_llm.acompletion",
         new_callable=AsyncMock,
         return_value=mock_response
     )
 
     #  3. データベースへの保存処理(JobRepository)も、実際のDBに書き込まないようにモック化
     mock_update_job = mocker.patch(
-        "app.repositories.job.JobRepository.update_job_data",
+        "repositories.job.JobRepository.update_job_data",
         new_callable=AsyncMock
     )
 
@@ -102,8 +102,8 @@ async def test_analysis_task_failed_due_to_amount_mismatch(mocker):
     mock_response.choices = [
         mocker.MagicMock(message=mocker.MagicMock(content=json.dumps(bad_llm_output)))
     ]
-    mocker.patch("app.services.call_llm.acompletion", new_callable=AsyncMock, return_value=bad_llm_output)
-    mock_update_job = mocker.patch("app.repositories.job.JobRepository.update_job_data", new_callable=AsyncMock)
+    mocker.patch("services.call_llm.acompletion", new_callable=AsyncMock, return_value=bad_llm_output)
+    mock_update_job = mocker.patch("repositories.job.JobRepository.update_job_data", new_callable=AsyncMock)
 
     # 実行
     await analysis_task("456", Path("/tmp/dummy.jpg"))

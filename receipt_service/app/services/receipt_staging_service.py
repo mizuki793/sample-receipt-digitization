@@ -1,8 +1,8 @@
 import os
-from app.core.config import settings
+from core.config import settings
 import logging
-from app.schemas.receipt import ReceiptTmpStorageData, ReceiptAnalysisResponse,ReceiptStorageData
-from app.services.storage.factory import get_storage_client
+from schemas.receipt import ReceiptTmpStorageData, ReceiptAnalysisResponse,ReceiptStorageData
+from services.storage.factory import get_storage_client
 from datetime import datetime
 
 # 適切なストレージ領域へ安全かつクリーンな状態で書き出す（シリアライズして保存する）クラス
@@ -83,4 +83,4 @@ class ReceiptStagingService:
         処理済みになった場合アプリ内ストレージ（ファイル）を削除
         """
         storage_client = get_storage_client()
-        res = storage_client.del_object_file(file_path=file_path, file_name=file_name)
+        storage_client.del_object_file(file_path=file_path, file_name=file_name)

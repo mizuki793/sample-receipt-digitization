@@ -2,20 +2,26 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from app.services.chromadb_service import ChromaDBService
-from app.services.agent_service import ShoppingAgent
+from services.chromadb_service import ChromaDBService
+from services.agent_service import ShoppingAgent
 
 app = FastAPI(title="Search RAG Service", version="1.0.0")
 agent = ShoppingAgent()
 
-# TODO:クラスのインスタンス化、可読性を高くしたい
 chroma_service = ChromaDBService()
 
 # TODO:スキーマーに切り分けが必要　- このサービスは一旦動くことを優先させる
 # --- リクエスト/レスポンススキーマ ---
-class EmbedRequest(BaseModel):
+class DiscoveredItem(BaseModel):
     item_name: str = Field(..., min_length=1, max_length=100)
+    unit_price: int = Field(..., ge=0)
+    category: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+class BulkEmbedRequest(BaseModel):
     job_id: str
+    store_name: str
+    items: List[DiscoveredItem] = Field(..., min_items=1)
 
 class SearchQueryRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=100)
@@ -35,13 +41,28 @@ class ChatStreamRequest(BaseModel):
 # --- エンドポイント ---
 # TODO:routerに切り分けるべき
 @app.post("/v1/embeddings", status_code=status.HTTP_201_CREATED)
-async def create_embedding(payload: EmbedRequest):
-    """レシート解析完了時に呼ばれるバックヤード処理：商品名をベクトル化してVector DBへ保存"""
+async def create_embeddings_bulk(payload: BulkEmbedRequest):
+    """
+    手動修正の確定時に呼ばれるバックヤード処理：
+    1つのjob_idに紐づく複数の商品を、多角化したベクトルデータとして一括保存
+    """
     try:
-        chroma_service.store_item(payload.item_name, payload.job_id)
-        return {"status": "success", "message": f"Item '{payload.item_name}' stored successfully."}
+        items_dict_list = [item.model_dump() for item in payload.items]
+        
+        total_vectors = chroma_service.store_bulk_items(
+            job_id=payload.job_id,
+            store_name=payload.store_name,
+            items=items_dict_list
+        )
+        return {
+            "status": "success",
+            "message": f"Successfully registered {total_vectors} vector variants for job_id '{payload.job_id}'."
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to store embedding: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Failed to store bulk embeddings: {str(e)}"
+        )
 
 @app.post("/v1/search", response_model=QueryResponse, status_code=status.HTTP_200_OK)
 async def search_items(payload: SearchQueryRequest):

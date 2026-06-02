@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from app.core.config import settings
-from app.services.storage.local_client import LocalStorageClient
-from app.services.storage.s3_client import S3StorageClient
+from core.config import settings
+from services.storage.local_client import LocalStorageClient
+from services.storage.s3_client import S3StorageClient
 
 class BaseStorageClient(ABC):
     @abstractmethod

@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     DUCKDB_PATH: str = "/app/data/ocr_few_shots.duckdb"
     STORAGE_TYPE: str = "LOCAL"
     LOCAL_DATA_SET_BASE_DIR: str = "/app/data"
+    BACKEND_URL:str = "http://search-rag-service:8001/v1"
 
     model_config = SettingsConfigDict(
         env_file=".env",

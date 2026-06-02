@@ -1,7 +1,7 @@
 from langchain_core.tools import tool
 import httpx
 import logging
-from app.services.chromadb_service import ChromaDBService
+from services.chromadb_service import ChromaDBService
 
 chroma_service = ChromaDBService()
 

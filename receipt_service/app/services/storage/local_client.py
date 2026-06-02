@@ -2,7 +2,7 @@ import json
 import aiofiles
 from pathlib import Path
 import logging
-from app.core.config import settings
+from core.config import settings
 
 class LocalStorageClient():
     def __init__(self):

@@ -2,8 +2,8 @@ import duckdb
 import logging
 from pathlib import Path
 from fastapi.concurrency import run_in_threadpool
-from app.core.config import settings
-from app.schemas.search import SearchStatsResponse, StoreStat, TimeZoneStat
+from core.config import settings
+from schemas.search import SearchStatsResponse, StoreStat, TimeZoneStat
 
 class ReceiptSearchService:
     @classmethod

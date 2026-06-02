@@ -6,11 +6,11 @@ from pathlib import Path
 import os
 from typing import Any
 from fastapi import UploadFile
-from app.repositories.job_mongo import MongoJobRepository
-from app.services.receipt_service import fetch_job_status
-from app.core.config import settings
-from app.services.storage.factory import get_storage_client
-from app.schemas.job import JobStatus
+from repositories.job_mongo import MongoJobRepository
+from services.receipt_service import fetch_job_status
+from core.config import settings
+from services.storage.factory import get_storage_client
+from schemas.job import JobStatus
 
 async def init_receipt_pipeline(file_object: UploadFile, job_id:str) -> str:
     await MongoJobRepository.create_job(job_id, JobStatus.PROCESSING.value)

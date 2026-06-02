@@ -4,16 +4,18 @@ from bson import ObjectId
 import logging
 import aiofiles
 import json
+import httpx
+from fastapi.encoders import jsonable_encoder
 from fastapi.concurrency import run_in_threadpool
-from app.core.config import settings
-from app.repositories.job_mongo import MongoJobRepository
-from app.repositories.ocr_few_shot_repository import OcrFewShotRepository
-from app.schemas.receipt import ReceiptAnalysisResponse
-from app.services.call_llm import call_llm_json
-from app.services.call_ocr import process_ocr_sync
-from app.services.prompt_assembler import ReceiptPromptAssembler
-from app.services.receipt_staging_service import ReceiptStagingService
-from app.schemas.job import JobStatus
+from core.config import settings
+from repositories.job_mongo import MongoJobRepository
+from repositories.ocr_few_shot_repository import OcrFewShotRepository
+from schemas.receipt import ReceiptAnalysisResponse
+from services.call_llm import call_llm_json
+from services.call_ocr import process_ocr_sync
+from services.prompt_assembler import ReceiptPromptAssembler
+from services.receipt_staging_service import ReceiptStagingService
+from schemas.job import JobStatus
 
 # todo:バックグラウンドで実行される非同期関数
 async def analysis_task(job_id: str, file_path: Path):
@@ -29,11 +31,12 @@ async def analysis_task(job_id: str, file_path: Path):
         #     max_retries=5,
         #     backoff_seconds=30
         # )
+        # TODO: AI-API削減のためmockを返す
         result_dict = {
             "store_name": "セブン-イレフブン 夢の島店",
             "store_address": "東京都江東区夢の島2-1-2",
-            "transaction_date": "2026-05-20T00:00:00",
-            "total_amount": 400,
+            "transaction_date": "2026-05-20T12:11:00",
+            "total_amount": 432,
             "tax": 32,
             "items": [
                 {"item_name": "卵", "unit_price": 150, "quantity": 1, "category":"日配品（乳製品・豆腐・卵・パンなど）"},
@@ -75,6 +78,16 @@ async def analysis_task(job_id: str, file_path: Path):
             await MongoJobRepository.update_job_data(job_id, {
                 "status": JobStatus.SUCCESS.value
             })
+            async with httpx.AsyncClient() as client:
+                payload = {
+                    "job_id": job_id,
+                    "store_name": validated_data.store_name,
+                    "items": validated_data.items
+                }
+                await client.post(
+                    f"{settings.BACKEND_URL}/embeddings",
+                    json = jsonable_encoder(payload)
+                )
     except Exception as e:
         logging.error(f"解析完了後のデータハンドリングに失敗しました: {str(e)}")
         await MongoJobRepository.update_job_data(job_id,{
@@ -200,12 +213,22 @@ async def fix_receipt_job_data(job_id: str, raw_ocr_text: str, fixed_data: Recei
         validated_data=fixed_data
     )
 
-    file_name = f"{job_id}.json"
-
-    await ReceiptStagingService.delete_receipt_file(file_name=file_name, file_path="tmp")
+    # file_name = f"{job_id}.json"
+    # await ReceiptStagingService.delete_receipt_file(file_name=file_name, file_path="tmp")
     await MongoJobRepository.update_job_data(job_id, {
         "status": JobStatus.SUCCESS.value
     })
+
+    async with httpx.AsyncClient() as client:
+        payload = {
+            "job_id": job_id,
+            "store_name": fixed_data.store_name,
+            "items": fixed_data.items
+        }
+        await client.post(
+            f"{settings.BACKEND_URL}/embeddings",
+            json = jsonable_encoder(payload)
+        )
     
     return {
         "job_id": job_id,

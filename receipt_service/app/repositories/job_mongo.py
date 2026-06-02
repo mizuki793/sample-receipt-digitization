@@ -1,8 +1,8 @@
 from typing import Any, Dict, List
 from datetime import datetime, timezone
 from fastapi.concurrency import run_in_threadpool
-from app.infrastructure import mongodb as mongo_infra
-from app.schemas.job import JobStatus
+from infrastructure import mongodb as mongo_infra
+from schemas.job import JobStatus
 
 class MongoJobRepository:    
     @classmethod

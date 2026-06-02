@@ -117,7 +117,8 @@
     > docker-compose down
   - cf.キャッシュなしbuild(web or redis)
     > docker compose build --no-cache {service名}
-
+    * ex:
+      > docker compose build --no-cache search-rag-service receipt-fastapi-web chat-frontend
 - swaggerで確認
   > http://localhost:8000/docs へアクセス
 
