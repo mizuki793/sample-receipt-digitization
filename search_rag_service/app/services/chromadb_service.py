@@ -47,7 +47,7 @@ class ChromaDBService:
             api_key=os.getenv("GEMINI_API_KEY")
         )
         
-        # コレクションを取得または作成（埋め込み関数をGeminiに差し替え）
+        # コレクションを取得または作成
         self.collection = self.chroma_client.get_or_create_collection(
             name="receipt_items",
             embedding_function=self.embedding_fn
@@ -56,13 +56,47 @@ class ChromaDBService:
         # キャッシュ辞書
         self._embedding_cache = {}
 
-    def store_item(self, item_name: str, job_id: str):
-        """商品名をGeminiでベクトル化してChromaに永続化保存する"""
-        self.collection.add(
-            documents=[item_name],
-            metadatas=[{"job_id": job_id}],
-            ids=[item_name]
-        )
+    def store_bulk_items(self, job_id: str, store_name: str, items: list) -> int:
+        """
+        確定データから商品ごとの複数表現テキストを生成し、一括でChromaDBに登録する
+        :param job_id: レシートごとのユニークID
+        :param shop_name: 店舗名
+        :param items: 商品情報の辞書リスト（item_name, price, category を含む）
+        :return: 登録された総ベクトル数
+        """
+        registered_count = 0
+
+        for item_idx, item in enumerate(items):
+            item_name = item.get("item_name")
+            unit_price = item.get("unit_price")
+            category = item.get("category")
+
+            text_patterns = []
+
+            # 【パターン1：基本形】価格比較用の標準テキスト
+            base_text = f"店舗: {store_name} | 商品: {item_name} | 価格: {unit_price}円"
+            text_patterns.append(base_text)
+
+            # 【パターン2：検索ヒット率向上用】表記揺れ・類義語対応のテキスト
+            search_enhancement_text = f"購入店舗: {store_name} の商品「{item_name}」"
+            text_patterns.append(search_enhancement_text)
+
+            # 【パターン3：カテゴリ情報】付与されていれば独立してベクトル化
+            if category:
+                category_text = f"商品ジャンル: {category} | 具体的な商品名: {item_name}"
+                text_patterns.append(category_text)
+
+            for pattern_idx, text in enumerate(text_patterns):
+                unique_id = f"{job_id}_item{item_idx}_pat{pattern_idx}"
+
+                self.collection.add(
+                    documents=[text],
+                    metadatas=[{"job_id": job_id}],
+                    ids=[unique_id]
+                )
+                registered_count += 1
+
+        return registered_count       
 
     def search_similar_items(self, query_text: str, n_results: int = 3):
         """Geminiのベクトル空間上で意味の近い商品を検索する"""

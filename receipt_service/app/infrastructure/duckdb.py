@@ -1,6 +1,6 @@
 import duckdb
 from pathlib import Path
-from app.core.config import settings
+from core.config import settings
 
 def init_database():
     db_path = settings.DUCKDB_PATH

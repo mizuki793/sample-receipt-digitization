@@ -5,3 +5,4 @@ class JobStatus(str, Enum):
     NEEDS_CORRECTION = "needs_correction"
     FAILED = "failed"
     SUCCESS = "success"
+    LOCKED = "locked"

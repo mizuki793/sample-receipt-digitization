@@ -1,5 +1,5 @@
 services:
-  receipt_service:
+  receipt-fastapi-web:
     build:
       context: ./receipt_service
       dockerfile: Dockerfile
@@ -7,7 +7,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./receipt_service:/app  # PC側のコード変更をコンテナにリアルタイム同期
+      - ./receipt_service/app:/app
+      - ./data:/data
     env_file:
       - .env
     depends_on:
@@ -21,7 +22,7 @@ services:
     ports:
       - "8001:8001"
     volumes:
-      - ./search_rag_service:/app
+      - ./search_rag_service/app:/app
     env_file:
       - .env
     deploy:
@@ -36,7 +37,9 @@ services:
         dockerfile: Dockerfile
       container_name: chat_frontend
       ports:
-        - "8501:8501"  # ホスト側のポートはお好みに応じて調整してください
+        - "8501:8501"
+      volumes:
+      - ./chat_frontend:/app
       env_file:
         - .env
       deploy:

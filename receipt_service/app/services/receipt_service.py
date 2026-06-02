@@ -1,18 +1,21 @@
 # BackgroundTasks で動く、重い解析処理やOpenAI連携ロジック
 from pathlib import Path
+from bson import ObjectId
 import logging
 import aiofiles
 import json
+import httpx
+from fastapi.encoders import jsonable_encoder
 from fastapi.concurrency import run_in_threadpool
-from app.core.config import settings
-from app.repositories.job_mongo import MongoJobRepository
-from app.repositories.ocr_few_shot_repository import OcrFewShotRepository
-from app.schemas.receipt import ReceiptAnalysisResponse
-from app.services.call_llm import call_llm_json
-from app.services.call_ocr import process_ocr_sync
-from app.services.prompt_assembler import ReceiptPromptAssembler
-from app.services.receipt_staging_service import ReceiptStagingService
-from app.schemas.job import JobStatus
+from core.config import settings
+from repositories.job_mongo import MongoJobRepository
+from repositories.ocr_few_shot_repository import OcrFewShotRepository
+from schemas.receipt import ReceiptAnalysisResponse
+from services.call_llm import call_llm_json
+from services.call_ocr import process_ocr_sync
+from services.prompt_assembler import ReceiptPromptAssembler
+from services.receipt_staging_service import ReceiptStagingService
+from schemas.job import JobStatus
 
 # todo:バックグラウンドで実行される非同期関数
 async def analysis_task(job_id: str, file_path: Path):
@@ -25,17 +28,29 @@ async def analysis_task(job_id: str, file_path: Path):
             prompt=receipt_prompt,
             ai_model=MODEL_NAME, 
             response_schema=ReceiptAnalysisResponse,
-            backoff_seconds=10
+            max_retries=5,
+            backoff_seconds=30
         )
+        # AIで解釈する必要がない疎通の場合は下記のコメントアウトを外し、実行する
+        # result_dict = {
+        #     "store_name": "セブン-イレフブン 夢の島店",
+        #     "store_address": "東京都江東区夢の島2-1-2",
+        #     "transaction_date": "2026-05-20T12:11:00",
+        #     "total_amount": 432,
+        #     "tax": 32,
+        #     "items": [
+        #         {"item_name": "卵", "unit_price": 150, "quantity": 1, "category":"日配品（乳製品・豆腐・卵・パンなど）"},
+        #         {"item_name": "牛乳", "unit_price": 250, "quantity": 1,"category":"日配品（乳製品・豆腐・卵・パンなど）" }
+        #     ]
+        # }
     except Exception as e:
         await MongoJobRepository.update_job_data(job_id, {
             "status": JobStatus.FAILED.value, 
             "result": {"error": f"AI解析処理が失敗しました: {str(e)}"}
         })
-
         logging.error(f"AI解析処理が失敗しました: {str(e)}")
-
         return
+    
     validated_data = await _validate_and_result(result_dict)
     if not validated_data:
         await MongoJobRepository.update_job_data(job_id, {
@@ -44,14 +59,15 @@ async def analysis_task(job_id: str, file_path: Path):
         })  
         return
     try:
+        await ReceiptStagingService.stage_unverified_receipt(
+            job_id=job_id,
+            raw_ocr_text=raw_ocr_text,
+            validated_data=validated_data
+        )
+
         if validated_data.needs_correction:
-            await ReceiptStagingService.stage_unverified_receipt(
-                job_id=job_id,
-                raw_ocr_text=raw_ocr_text,
-                validated_data=validated_data
-            )
             await MongoJobRepository.update_job_data(job_id, {
-                "status": "needs_correction"
+                "status": JobStatus.NEEDS_CORRECTION.value
             })
         else:
             await ReceiptStagingService.store_verified_receipt(
@@ -62,6 +78,16 @@ async def analysis_task(job_id: str, file_path: Path):
             await MongoJobRepository.update_job_data(job_id, {
                 "status": JobStatus.SUCCESS.value
             })
+            async with httpx.AsyncClient() as client:
+                payload = {
+                    "job_id": job_id,
+                    "store_name": validated_data.store_name,
+                    "items": validated_data.items
+                }
+                await client.post(
+                    f"{settings.BACKEND_URL}/embeddings",
+                    json = jsonable_encoder(payload)
+                )
     except Exception as e:
         logging.error(f"解析完了後のデータハンドリングに失敗しました: {str(e)}")
         await MongoJobRepository.update_job_data(job_id,{
@@ -99,11 +125,16 @@ async def fetch_job_status(job_id:str)-> dict | None:
     
     status = job_status_data.get("status")
     logging.debug(f"Job {job_id} status: {status}")
-
-    if status == "success" or status == "processing" or status == "failed":
-        # success時はyyyy/mm/ddの場所に配置されているためpathをどこかに記入し取得する必要がある(下記では取得できないが、補正用のデータ取得の範囲では着手しない)
-        return job_status_data
-    if status == "needs_correction":
+    if status == "processing":
+        cleaned_data = {}
+        for key, value in job_status_data.items():
+            if isinstance(value, ObjectId):
+                cleaned_data[key] = str(value)
+            else:
+                cleaned_data[key] = value
+        print(f"cleaned_data:{cleaned_data}")
+        return cleaned_data
+    elif status in ["success", "needs_correction", "failed","locked"]:
         file_path = Path(settings.LOCAL_DATA_SET_BASE_DIR) / "tmp" / f"{job_id}.json"
         if not file_path.exists():
             logging.warning(f"ジョブ {job_id} の補正ファイルが見つかりません: {file_path}")
@@ -111,13 +142,16 @@ async def fetch_job_status(job_id:str)-> dict | None:
         try:
             async with aiofiles.open(file_path, mode="r", encoding="utf-8") as f:
                 content = await f.read()
-                return json.loads(content)
+                data = json.loads(content)
+                if isinstance(data, dict):
+                    data["status"] = status
+                return data
         except Exception as e:
             logging.error(f"ファイル {file_path} の読み込みに失敗しました: {str(e)}")
             return None
     else:
         logging.warning(f"ジョブ {job_id} に未知のステータス '{status}' が見つかりました。")
-        return None
+        return job_status_data
 
 async def lock_receipt_job(job_id)-> str | None: 
     logging.info(f"ジョブの編集ロック処理:{job_id}")
@@ -129,16 +163,24 @@ async def lock_receipt_job(job_id)-> str | None:
     
     status = job_status_data.get("status")
     
-    if status == JobStatus.PROCESSING.value:
-        return {"job_id": job_id, "status": JobStatus.PROCESSING.value, "message": "このジョブは既にロックされています。"}
+    if status == JobStatus.LOCKED.value:
+        return {
+            "job_id": job_id, 
+            "status": JobStatus.LOCKED.value, 
+            "message": "このジョブは既にロックされています。"
+        }
     elif status in [JobStatus.SUCCESS.value, JobStatus.NEEDS_CORRECTION.value, JobStatus.FAILED.value]:
         updated = await MongoJobRepository.update_job_status_atomically(
             job_id, 
             JobStatus(status),
-            JobStatus.PROCESSING
+            JobStatus.LOCKED
         )
         if updated:
-            return {"job_id": job_id, "status": JobStatus.PROCESSING.value, "message": "ジョブが正常にロックされました。"}
+            return {
+                "job_id": job_id,
+                "status": JobStatus.LOCKED.value,
+                "message": "ジョブが正常にロックされました。"
+            }
         else:
             # 更新に失敗した場合、別のプロセスが既に状態を変更した可能性がある
             logging.warning(f"ジョブ {job_id} のロック中に競合が発生しました。現在のステータス: {status}")
@@ -158,16 +200,38 @@ async def fix_receipt_job_data(job_id: str, raw_ocr_text: str, fixed_data: Recei
 
     status = job_status_data.get("status")
 
-    if status != JobStatus.PROCESSING.value:
-        return {"job_id": job_id, "status": status, "message": f"処理フラグがされていないjob_idのため編集不可: {job_id}"}
+    if status != JobStatus.LOCKED.value:
+        return {
+            "job_id": job_id,
+            "status": status, 
+            "message": f"処理フラグがされていないjob_idのため編集不可: {job_id}"
+        }
+
     await ReceiptStagingService.store_verified_receipt(
         job_id=job_id,
         raw_ocr_text=raw_ocr_text,
         validated_data=fixed_data
     )
-    file_name = f"{job_id}.json"
-    await ReceiptStagingService.delete_receipt_file(file_name=file_name, file_path="tmp")
+
+    # file_name = f"{job_id}.json"
+    # await ReceiptStagingService.delete_receipt_file(file_name=file_name, file_path="tmp")
     await MongoJobRepository.update_job_data(job_id, {
         "status": JobStatus.SUCCESS.value
     })
-    return {"job_id": job_id, "status": JobStatus.SUCCESS.value, "message": "レシートデータが正常に修正されました。"}
+
+    async with httpx.AsyncClient() as client:
+        payload = {
+            "job_id": job_id,
+            "store_name": fixed_data.store_name,
+            "items": fixed_data.items
+        }
+        await client.post(
+            f"{settings.BACKEND_URL}/embeddings",
+            json = jsonable_encoder(payload)
+        )
+    
+    return {
+        "job_id": job_id,
+        "status": JobStatus.SUCCESS.value,
+        "message": "レシートデータが正常に修正されました。"
+    }

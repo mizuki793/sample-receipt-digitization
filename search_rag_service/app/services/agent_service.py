@@ -2,11 +2,11 @@ from typing import Dict, TypedDict, Annotated, Sequence
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.chat_models import init_chat_model
 from datetime import datetime
 import os
 
-from app.tools.shopping_tools import (
+from tools.shopping_tools import (
     search_past_prices_rag,
     calculate_duty_day_budget_db
 )
@@ -26,12 +26,12 @@ class ShoppingAgent:
         self.tool_node = ToolNode(self.tools)
 
         model_name = os.getenv("LANGCHAIN_MODEL_NAME", "gemini-2.5-flash")
+        model_provider = os.getenv("LANGCHAIN_MODEL_PROVIDER", "google_genai")
 
         # Gemini 2.5 Flashの初期化とツールの紐付け
-        #TODO:gemini前提のコードになっているため、modelの変更可能したい
-        self.model = ChatGoogleGenerativeAI(
+        self.model = init_chat_model(
             model=model_name,
-            google_api_key=os.getenv("GEMINI_API_KEY"),
+            model_provider=model_provider,
             max_retries=3
         ).bind_tools(self.tools)
         
@@ -78,7 +78,6 @@ class ShoppingAgent:
                 "end": END
             }
         )
-        
         # ツール実行後は、再度エージェント（LLM）に戻って結果を確認させる
         graph.add_edge("tools", "agent")
         
@@ -89,10 +88,8 @@ class ShoppingAgent:
         inputs = {"messages": [HumanMessage(content=user_query)]}
         
         # グラフを実行し、ステップごとの更新イベントをストリーム検知
-        async for output in self.app.astream(inputs, stream_mode="updates"):
-            for node, data in output.items():
-                if node == "agent":
-                    last_msg = data["messages"][-1]
-                    if last_msg.content:
-                        # フロントエンドがパースしやすい形式でテキストチャンクを返却
-                        yield f"data: {last_msg.content}\n\n"
+        async for chunk, metadata in self.app.astream(inputs, stream_mode="messages"):
+            if metadata.get("langgraph_node") == "agent" and chunk.content:
+                token = chunk.content
+                yield f"data: {token}\n\n"
+        yield "data: [DONE]\n\n"

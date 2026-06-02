@@ -1,5 +1,5 @@
 from pymongo import MongoClient
-from app.core.config import settings
+from core.config import settings
 
 mongo_client: MongoClient | None = None
 

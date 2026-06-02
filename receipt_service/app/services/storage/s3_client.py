@@ -1,7 +1,6 @@
-# app/services/storage/s3_client.py
 import json
 # import aioboto3
-from app.core.config import settings
+from core.config import settings
 
 class S3StorageClient():
     def __init__(self):
