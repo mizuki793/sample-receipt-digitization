@@ -30,11 +30,15 @@
 
 ---
 ## 動作デモ
+- OCR関連の挙動での読み込みが時間が関係上、動画を1.5倍速にしています
 
-<kbd>
-  <video src="https://github.com/user-attachments/assets/6c56c533-fd23-4717-954f-8ae0be4dbbd6" 
-  width="600px" controls muted></video>
-</kbd>
+
+
+  <kbd>
+    <video src="https://github.com/user-attachments/assets/6c56c533-fd23-4717-954f-8ae0be4dbbd6" 
+    width="600px" controls muted></video>
+  </kbd>
+
 
 ---
 ## 機能一覧
