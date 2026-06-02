@@ -5,7 +5,7 @@ from api_client import upload_receipt_api, check_job_status_with_polling, lock_j
 
 def _upload_and_poll_receipt(file) -> tuple[str, str | None]:
     """
-    1枚のレシートをアップロードし、最終結果（success / needs_correction / failed）が
+    1枚のレシートをアップロードし、最終結果（success / needs_correction / failed / locked）が
     確定するか、最大タイムアウトに達するまで、ポーリングでバックエンドに問い合わせ続けます。
     """
     res_json = upload_receipt_api(file)
@@ -21,7 +21,7 @@ def _upload_and_poll_receipt(file) -> tuple[str, str | None]:
     while True:
         status = asyncio.run(check_job_status_with_polling(job_id))
 
-        if status in ["success", "needs_correction", "failed"]:
+        if status in ["success", "needs_correction", "failed", "locked"]:
             return status, job_id
             
         elapsed_time = time.time() - start_time

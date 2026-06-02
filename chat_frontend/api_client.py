@@ -15,7 +15,7 @@ async def check_job_status_with_polling(job_id: str, timeout: int = 60) -> str:
                 response = await client.get(receipt_status_url, timeout=5.0)
                 if response.status_code == 200:
                     status = response.json().get("status") 
-                    if status in ["success", "failed", "needs_correction", "processing"]:
+                    if status in ["success", "failed", "needs_correction", "processing", "locked"]:
                         return status
             except Exception as e:
                 logging.warning(f"ポーリング通信エラー (Job: {job_id}): {e}")
