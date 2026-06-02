@@ -1,6 +1,7 @@
 import httpx
 import logging
 import time
+import asyncio
 from config import settings
 
 logging.basicConfig(level=logging.INFO)
@@ -18,7 +19,7 @@ async def check_job_status_with_polling(job_id: str, timeout: int = 60) -> str:
                         return status
             except Exception as e:
                 logging.warning(f"ポーリング通信エラー (Job: {job_id}): {e}")
-            time.sleep(2.0)
+            await asyncio.sleep(2.0)
         return "timeout"
 
 def upload_receipt_api(file) -> dict | None:
