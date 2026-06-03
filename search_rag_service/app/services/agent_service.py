@@ -1,14 +1,15 @@
 from typing import Dict, TypedDict, Annotated, Sequence
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langchain_core.messages import BaseMessage, HumanMessage
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langchain.chat_models import init_chat_model
 from datetime import datetime
 import os
 
+from services.vector_store import BaseVectorStore
 from tools.shopping_tools import (
-    search_past_prices_rag,
-    calculate_duty_day_budget_db
+    create_search_past_prices_rag_tool,
+    create_calculate_duty_day_budget_db_tool,
 )
 
 # 1. グラフ全体でメッセージ履歴を保持するための状態（State）定義
@@ -16,11 +17,10 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], lambda x, y: x + y]
 
 class ShoppingAgent:
-    def __init__(self):
-        # ツール群の登録
+    def __init__(self, vector_store: BaseVectorStore):
         self.tools = [
-            search_past_prices_rag, 
-            calculate_duty_day_budget_db
+            create_search_past_prices_rag_tool(vector_store),
+            create_calculate_duty_day_budget_db_tool(),
         ]
 
         self.tool_node = ToolNode(self.tools)
@@ -28,14 +28,12 @@ class ShoppingAgent:
         model_name = os.getenv("LANGCHAIN_MODEL_NAME", "gemini-2.5-flash")
         model_provider = os.getenv("LANGCHAIN_MODEL_PROVIDER", "google_genai")
 
-        # Gemini 2.5 Flashの初期化とツールの紐付け
         self.model = init_chat_model(
             model=model_name,
             model_provider=model_provider,
-            max_retries=3
+            max_retries=3,
         ).bind_tools(self.tools)
-        
-        # ワークフローグラフの構築
+
         self.workflow = self._create_workflow()
         self.app = self.workflow.compile()
 

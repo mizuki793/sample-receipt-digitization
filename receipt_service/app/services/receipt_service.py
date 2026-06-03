@@ -24,25 +24,25 @@ async def analysis_task(job_id: str, file_path: Path):
     MODEL_NAME = settings.LLM_MODEL_NAME
 
     try:
-        result_dict = await call_llm_json(
-            prompt=receipt_prompt,
-            ai_model=MODEL_NAME, 
-            response_schema=ReceiptAnalysisResponse,
-            max_retries=5,
-            backoff_seconds=30
-        )
+        # result_dict = await call_llm_json(
+        #     prompt=receipt_prompt,
+        #     ai_model=MODEL_NAME, 
+        #     response_schema=ReceiptAnalysisResponse,
+        #     max_retries=5,
+        #     backoff_seconds=30
+        # )
         # AIで解釈する必要がない疎通の場合は下記のコメントアウトを外し、実行する
-        # result_dict = {
-        #     "store_name": "セブン-イレフブン 夢の島店",
-        #     "store_address": "東京都江東区夢の島2-1-2",
-        #     "transaction_date": "2026-05-20T12:11:00",
-        #     "total_amount": 432,
-        #     "tax": 32,
-        #     "items": [
-        #         {"item_name": "卵", "unit_price": 150, "quantity": 1, "category":"日配品（乳製品・豆腐・卵・パンなど）"},
-        #         {"item_name": "牛乳", "unit_price": 250, "quantity": 1,"category":"日配品（乳製品・豆腐・卵・パンなど）" }
-        #     ]
-        # }
+        result_dict = {
+            "store_name": "セブン-イレフブン 夢の島店",
+            "store_address": "東京都江東区夢の島2-1-2",
+            "transaction_date": "2026-05-20T12:11:00",
+            "total_amount": 432,
+            "tax": 32,
+            "items": [
+                {"item_name": "卵", "unit_price": 150, "quantity": 1, "category":"日配品（乳製品・豆腐・卵・パンなど）"},
+                {"item_name": "牛乳", "unit_price": 250, "quantity": 1,"category":"日配品（乳製品・豆腐・卵・パンなど）" }
+            ]
+        }
     except Exception as e:
         await MongoJobRepository.update_job_data(job_id, {
             "status": JobStatus.FAILED.value, 
