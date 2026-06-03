@@ -2,7 +2,7 @@ import httpx
 import logging
 import time
 import asyncio
-from config import settings
+from src.config import settings
 
 logging.basicConfig(level=logging.INFO)
 

@@ -1,6 +1,6 @@
 import streamlit as st
 import httpx
-from config import settings
+from src.config import settings
 
 def render_chat_interface_page():
     st.title("最安値お買い物チャットAI")

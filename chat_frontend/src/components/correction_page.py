@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import time
-from api_client import fix_job_api
+from src.api_client import fix_job_api
 
 def render_manual_correction_page():
     """

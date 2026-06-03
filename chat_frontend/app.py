@@ -3,9 +3,9 @@ import httpx
 import streamlit as st
 import httpx
 import logging
-from components.sidebar import render_sidebar_uploader
-from components.correction_page import render_manual_correction_page
-from components.chat_page import render_chat_interface_page
+from src.components.sidebar import render_sidebar_uploader
+from src.components.correction_page import render_manual_correction_page
+from src.components.chat_page import render_chat_interface_page
 
 # アプリケーション全体の設定
 logging.basicConfig(level=logging.INFO)
