@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, status
-from services.chromadb_service import create_chroma_vector_store
+from infrastructure.chroma_vector_store import create_chroma_vector_store
 from services.vector_store import BaseVectorStore
 from services.agent_service import ShoppingAgent
 

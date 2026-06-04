@@ -4,21 +4,19 @@ repos:
       # 1. レシート解析サービス(OCR)のテスト
       - id: pytest-receipt-service
         name: Run pytest for receipt-service
-        entry: docker compose exec -T receipt-fastapi-web pytest
+        entry: docker compose exec -T receipt-fastapi-web env PYTHONPATH=/app/app pytest
         language: system
         types: [python]
         pass_filenames: false
-        # receipt_service ディレクトリ配下のファイルが変更された場合のみ実行
         files: ^receipt_service/
 
       # 2. RAG検索サービスのテスト
       - id: pytest-search-rag-service
         name: Run pytest for search-rag-service
-        entry: docker compose exec -T search-rag-service pytest
+        entry: docker compose exec -T search-rag-service env PYTHONPATH=/app/app pytest
         language: system
         types: [python]
         pass_filenames: false
-        # search_rag_service ディレクトリ配下のファイルが変更された場合のみ実行
         files: ^search_rag_service/
 
       # 3. チャットフロントエンドのテスト
@@ -28,5 +26,4 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
-        # chat_frontend ディレクトリ配下のファイルが変更された場合のみ実行
         files: ^chat_frontend/

@@ -1,5 +1,5 @@
-from typing import List, Optional
 from pydantic import BaseModel, Field
+from typing import List, Optional
 
 class DiscoveredItem(BaseModel):
     item_name: str = Field(..., min_length=1, max_length=100)
@@ -10,11 +10,11 @@ class DiscoveredItem(BaseModel):
 class BulkEmbedRequest(BaseModel):
     job_id: str
     store_name: str
-    items: List[DiscoveredItem] = Field(..., min_items=1)
+    items: list[DiscoveredItem] = Field(..., min_length=1)
 
 class SearchQueryRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=100)
-    n_results: Optional[int] = 3
+    n_results: int = 3
 
 class MatchedItem(BaseModel):
     item_name: str
@@ -22,7 +22,7 @@ class MatchedItem(BaseModel):
 
 class QueryResponse(BaseModel):
     query: str
-    matches: List[MatchedItem]
+    matches: list[MatchedItem]
 
 class ChatStreamRequest(BaseModel):
     message: str
