@@ -1,0 +1,29 @@
+repos:
+  - repo: local
+    hooks:
+      # 1. レシート解析サービス(OCR)のテスト
+      - id: pytest-receipt-service
+        name: Run pytest for receipt-service
+        entry: docker compose exec -T receipt-fastapi-web env PYTHONPATH=/app/app pytest
+        language: system
+        types: [python]
+        pass_filenames: false
+        files: ^receipt_service/
+
+      # 2. RAG検索サービスのテスト
+      - id: pytest-search-rag-service
+        name: Run pytest for search-rag-service
+        entry: docker compose exec -T search-rag-service env PYTHONPATH=/app/app pytest
+        language: system
+        types: [python]
+        pass_filenames: false
+        files: ^search_rag_service/
+
+      # 3. チャットフロントエンドのテスト
+      - id: pytest-chat-frontend
+        name: Run pytest for chat-frontend
+        entry: docker compose exec -T chat-frontend pytest
+        language: system
+        types: [python]
+        pass_filenames: false
+        files: ^chat_frontend/

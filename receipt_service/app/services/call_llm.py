@@ -1,7 +1,7 @@
 import asyncio
 import json
 from typing import Type, Union, Dict, Any
-import logging
+from core.logging_config import logger
 import litellm
 from litellm import acompletion
 from pydantic import BaseModel

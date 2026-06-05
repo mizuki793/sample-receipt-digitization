@@ -2,11 +2,11 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 
 class SearchRequest(BaseModel):
-    #100文字制限、前後の空白自動削除、空文字禁止
+    # 100文字制限、前後の空白自動削除、空文字禁止
     query: str = Field(
         ..., 
         max_length=100, 
-        min_length=1, 
+        min_length=1,
         strip_whitespace=True,
         description="検索する商品名（例：卵）"
     )

@@ -1,7 +1,6 @@
-import os
 from core.config import settings
-import logging
-from schemas.receipt import ReceiptTmpStorageData, ReceiptAnalysisResponse,ReceiptStorageData
+from core.logging_config import logger
+from schemas.receipt import ReceiptTmpStorageData, ReceiptAnalysisResponse, ReceiptStorageData
 from services.storage.factory import get_storage_client
 from datetime import datetime
 
@@ -83,4 +82,4 @@ class ReceiptStagingService:
         処理済みになった場合アプリ内ストレージ（ファイル）を削除
         """
         storage_client = get_storage_client()
-        storage_client.del_object_file(file_path=file_path, file_name=file_name)
+        await storage_client.del_object_file(file_path=file_path, file_name=file_name)

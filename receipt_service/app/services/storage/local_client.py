@@ -1,7 +1,7 @@
 import json
 import aiofiles
 from pathlib import Path
-import logging
+from core.logging_config import logger
 from core.config import settings
 
 class LocalStorageClient():

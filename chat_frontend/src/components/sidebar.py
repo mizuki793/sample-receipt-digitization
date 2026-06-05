@@ -1,7 +1,7 @@
 import streamlit as st
 import time
 import asyncio
-from api_client import upload_receipt_api, check_job_status_with_polling, lock_job_api, fetch_job_detail_api
+from src.api_client import upload_receipt_api, check_job_status_with_polling, lock_job_api, fetch_job_detail_api
 
 def _upload_and_poll_receipt(file) -> tuple[str, str | None]:
     """

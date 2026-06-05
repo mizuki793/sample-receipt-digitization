@@ -1,8 +1,8 @@
 import httpx
-import logging
+from src.logging_config import logger
 import time
 import asyncio
-from config import settings
+from src.config import settings
 
 logging.basicConfig(level=logging.INFO)
 

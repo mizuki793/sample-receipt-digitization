@@ -1,11 +1,7 @@
-## 業務フローのコントロール（手順の統括）などの責務を実行する
-## データの具体的な保存・取得コマンド（リポジトリ・インフラの責務）は実施しない
-## ex:複数リソースのパイプライン（結合）など
-
 from pathlib import Path
-import os
 from typing import Any
 from fastapi import UploadFile
+import os
 from repositories.job_mongo import MongoJobRepository
 from services.receipt_service import fetch_job_status
 from core.config import settings
@@ -35,5 +31,5 @@ async def view_receipt_status(job_id: str):
     return job_status
 
 async def view_job_ids_by_status(status: JobStatus) -> list[str]:
-    list = await MongoJobRepository.get_job_ids_by_status(status)
-    return list
+    job_ids = await MongoJobRepository.get_job_ids_by_status(status)
+    return job_ids

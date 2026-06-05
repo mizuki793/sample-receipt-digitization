@@ -19,4 +19,8 @@ search_rag_service/chroma_data/
 *.duckdb
 receipt_service/data/
 search_rag_service/app/chroma_data/
-
+# git-copilot関連ファイル
+copilot-agents.json
+.pre-commit-config.yaml
+.github/agents/
+.github/copilot-instructions.md

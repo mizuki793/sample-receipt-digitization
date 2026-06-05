@@ -1,5 +1,5 @@
 import duckdb
-import logging
+from core.logging_config import logger
 from pathlib import Path
 from fastapi.concurrency import run_in_threadpool
 from core.config import settings

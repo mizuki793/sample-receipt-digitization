@@ -4,6 +4,10 @@ from fastapi.concurrency import run_in_threadpool
 from infrastructure.duckdb import init_database
 from infrastructure.mongodb import init_mongo_client, close_mongo_client
 from routers.receipt_router import router as receipt_router
+from core.logging_config import configure_logging
+
+# Configure logging as early as possible
+configure_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
