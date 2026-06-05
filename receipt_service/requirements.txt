@@ -24,3 +24,4 @@ duckdb==1.5.0
 aiofiles==25.1.0
 pyMongo==4.17.0
 pytest
+pytest-asyncio

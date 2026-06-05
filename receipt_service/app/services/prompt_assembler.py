@@ -14,8 +14,7 @@ class ReceiptPromptAssembler:
                 example_section += f"      ### 出力期待値\n"
                 example_section += f"        ```json\n{shot['corrected_json']}\n        ```\n"
         else:
-        # DuckDBが空、またはヒットしなかった場合のフォールバック（既存の固定例1）
-                        # 固定例のインデントを修正
+            # DuckDBが空、またはヒットしなかった場合のフォールバック（既存の固定例1）
             fixed_example = """\
             ## 例1: 固定の修正実績（基本ケース）
               ### テキスト入力

@@ -1,13 +1,158 @@
-# import pytest
-# import os
-# import json
-# from pathlib import Path
-# from datetime import datetime
-# from unittest.mock import AsyncMock
-# from schemas.receipt import ReceiptItem
-# from services.receipt_service import analysis_task
+import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+from pathlib import Path
+from schemas.receipt import ReceiptAnalysisResponse, ReceiptItem
+from schemas.job import JobStatus
+from services.receipt_service import (
+    analysis_task,
+    _validate_and_result,
+    _convert_img_to_raw_text,
+    _process_ocr_analysis,
+    fetch_job_status
+)
 
-# # 初期設定
+
+@pytest.mark.asyncio
+async def test_validate_and_result_success():
+    """Pydantic validation should succeed with valid receipt data."""
+    result_dict = {
+        "store_name": "テスト店舗",
+        "store_address": "東京都渋谷区",
+        "transaction_date": "2026-05-20T12:00:00",
+        "total_amount": 300,
+        "tax": 24,
+        "items": [
+            {
+                "item_name": "卵",
+                "unit_price": 150,
+                "quantity": 2,
+                "category": "日配品（乳製品・豆腐・卵・パンなど）"
+            }
+        ],
+        "needs_correction": False
+    }
+
+    result = await _validate_and_result(result_dict)
+
+    assert result is not None
+    assert isinstance(result, ReceiptAnalysisResponse)
+    assert result.store_name == "テスト店舗"
+    assert result.total_amount == 300
+
+
+@pytest.mark.asyncio
+async def test_validate_and_result_invalid_data():
+    """Validation should return None for invalid data."""
+    result_dict = {
+        "store_name": "テスト店舗",
+        # Missing required fields
+    }
+
+    result = await _validate_and_result(result_dict)
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_convert_img_to_raw_text():
+    """Image conversion should call OCR processing."""
+    img_path = Path("/tmp/test.jpg")
+    
+    with patch("services.receipt_service.run_in_threadpool") as mock_run:
+        mock_run.return_value = "テキスト情報"
+
+        result = await _convert_img_to_raw_text(img_path)
+
+        assert result == "テキスト情報"
+        mock_run.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_process_ocr_analysis():
+    """OCR analysis should fetch few-shots and assemble prompt."""
+    raw_text = "テスト画像の文字"
+    
+    with patch("services.receipt_service.OcrFewShotRepository.find_similar_shots", new_callable=AsyncMock) as mock_shots, \
+         patch("services.receipt_service.ReceiptPromptAssembler.build_few_shot_receipt_prompt") as mock_prompt:
+        
+        mock_shots.return_value = [{"example": "data"}]
+        mock_prompt.return_value = "プロンプト"
+
+        result = await _process_ocr_analysis(raw_text)
+
+        assert result == "プロンプト"
+        mock_shots.assert_called_once_with(raw_text, limit=2)
+
+
+@pytest.mark.asyncio
+async def test_fetch_job_status_processing():
+    """Fetch processing job status from MongoDB."""
+    job_id = "test-job-123"
+    
+    with patch("services.receipt_service.MongoJobRepository.get_job", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = {
+            "_id": "test-id",
+            "status": "processing",
+            "created_at": "2026-05-20T12:00:00"
+        }
+
+        result = await fetch_job_status(job_id)
+
+        assert result is not None
+        assert result["status"] == "processing"
+        mock_get.assert_called_once_with(job_id)
+
+
+@pytest.mark.asyncio
+async def test_fetch_job_status_not_found():
+    """Return None when job not found."""
+    job_id = "nonexistent-job"
+    
+    with patch("services.receipt_service.MongoJobRepository.get_job", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = None
+
+        result = await fetch_job_status(job_id)
+
+        assert result is None
+
+
+@pytest.mark.asyncio
+async def test_analysis_task_success():
+    """Analysis task should process image and update job status."""
+    job_id = "test-job"
+    file_path = Path("/tmp/test.jpg")
+    
+    with patch("services.receipt_service._convert_img_to_raw_text", new_callable=AsyncMock) as mock_convert, \
+         patch("services.receipt_service._process_ocr_analysis", new_callable=AsyncMock) as mock_ocr, \
+         patch("services.receipt_service.call_llm_json", new_callable=AsyncMock) as mock_llm, \
+         patch("services.receipt_service.ReceiptStagingService.stage_unverified_receipt", new_callable=AsyncMock) as mock_stage, \
+         patch("services.receipt_service.ReceiptStagingService.store_verified_receipt", new_callable=AsyncMock) as mock_store, \
+         patch("services.receipt_service.MongoJobRepository.update_job_data", new_callable=AsyncMock) as mock_update:
+        
+        mock_convert.return_value = "raw ocr text"
+        mock_ocr.return_value = "assembled prompt"
+        
+        result_dict = {
+            "store_name": "テスト店舗",
+            "store_address": "東京都渋谷区",
+            "transaction_date": "2026-05-20T12:00:00",
+            "total_amount": 1000,
+            "tax": 80,
+            "items": [],
+            "needs_correction": False
+        }
+        mock_llm.return_value = result_dict
+
+        await analysis_task(job_id, file_path)
+
+        # Verify staging and storage called
+        mock_stage.assert_called_once()
+        mock_store.assert_called_once()
+        # Verify final status update to SUCCESS
+        calls = mock_update.call_args_list
+        final_call = calls[-1]
+        assert final_call[0][1]["status"] == JobStatus.SUCCESS.value
+
 # os.environ["GEMINI_API_KEY"] = "dummy"
 # class FlexibleDict(dict):
 #     def __getattr__(self, name):

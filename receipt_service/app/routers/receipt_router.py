@@ -66,6 +66,8 @@ async def lock_job_status(job_id: str):
         return res
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"ジョブのロック処理に失敗しました: {str(e)}")
         raise HTTPException(
@@ -88,6 +90,8 @@ async def update_job_detail(job_id: str, request_body: ReceiptFixRequest):
                 detail=res["message"]
             )
         return res
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"ジョブデータの修正に失敗しました: {str(e)}")
         raise HTTPException(
@@ -95,7 +99,7 @@ async def update_job_detail(job_id: str, request_body: ReceiptFixRequest):
             detail="ジョブデータの修正中に予期せぬエラーが発生しました。"
         )
 
-@router.post("receipts/search")
+@router.post("/receipts/search")
 async def search_receipt_stats(payload: SearchRequest):
     try:
         stats = await ReceiptSearchService.search_item_stats(payload.query)
