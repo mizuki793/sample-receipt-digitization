@@ -1,5 +1,5 @@
 from core.config import settings
-import logging
+from core.logging_config import logger
 from schemas.receipt import ReceiptTmpStorageData, ReceiptAnalysisResponse, ReceiptStorageData
 from services.storage.factory import get_storage_client
 from datetime import datetime

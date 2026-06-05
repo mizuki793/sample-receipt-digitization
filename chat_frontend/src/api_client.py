@@ -1,5 +1,5 @@
 import httpx
-import logging
+from src.logging_config import logger
 import time
 import asyncio
 from src.config import settings

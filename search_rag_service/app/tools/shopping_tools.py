@@ -1,8 +1,8 @@
 from langchain_core.tools import tool
 import httpx
 import logging
+from core.logging_config import logger
 from services.vector_store import BaseVectorStore
-
 
 def create_search_past_prices_rag_tool(vector_store: BaseVectorStore):
     @tool

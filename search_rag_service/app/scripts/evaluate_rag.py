@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 dummy_module = MagicMock()
 sys.modules['langchain_community.chat_models.vertexai'] = dummy_module
 import asyncio
-import logging
+from core.logging_config import logger
 import pandas as pd
 from datasets import Dataset
 from ragas import evaluate

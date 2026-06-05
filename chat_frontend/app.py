@@ -2,13 +2,15 @@ import os
 import httpx
 import streamlit as st
 import httpx
-import logging
+from src.logging_config import configure_logging
+
+# Configure logging centrally
+configure_logging()
 from src.components.sidebar import render_sidebar_uploader
 from src.components.correction_page import render_manual_correction_page
 from src.components.chat_page import render_chat_interface_page
 
 # アプリケーション全体の設定
-logging.basicConfig(level=logging.INFO)
 st.set_page_config(page_title="最安値お買い物チャットAI", layout="centered")
 
 # グローバルなセッション状態の初期化
