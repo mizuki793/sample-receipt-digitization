@@ -7,6 +7,7 @@ class SearchRequest(BaseModel):
         ..., 
         max_length=100, 
         min_length=1,
+        strip_whitespace=True,
         description="検索する商品名（例：卵）"
     )
 

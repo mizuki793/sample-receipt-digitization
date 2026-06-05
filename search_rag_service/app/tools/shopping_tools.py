@@ -9,6 +9,7 @@ def create_search_past_prices_rag_tool(vector_store: BaseVectorStore):
     def search_past_prices_rag(query: str) -> str:
         """
         過去のレシート履歴（ChromaDB）から、商品の過去最安値や店舗ごとの価格情報を検索します。
+        「卵はどこが一番安い？」「過去の牛乳の価格は？」といった、商品の価格調査に関する質問の時に必ず使用してください。
         """
         logging.info(f"[RAG Tool] ChromaDBへクエリを送信中: '{query}'")
 
@@ -39,6 +40,8 @@ def create_calculate_duty_day_budget_db_tool():
     def calculate_duty_day_budget_db(duty_date: str) -> str:
         """
         指定された当番日（日付）の支出合計や、その日の予算残高をDuckDBから取得します。
+        「今日の当番の予算は足りそう？」「〇月〇日の買い出しでいくら使った？」といった、当番日の金額や計算に関する質問の時に必ず使用してください。
+        引数の duty_date は 'YYYY-MM-DD' 形式の文字列にしてください。
         """
         url = f"http://receipt_fastapi_web:8000/v1/expenses/duty-day?date={duty_date}"
         try:
